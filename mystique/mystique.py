@@ -14,6 +14,7 @@ palette = [
     ('body','black','light gray', 'standout'),
     ('reverse','light gray','black'),
     ('header','light red','dark blue', 'bold'),
+    ('footer','light gray','black',),
     ('editcp','black','white', 'bold'),
     ('bright','dark gray','light gray', ('bold','standout')),
     ('buttn','black','dark cyan'),
@@ -101,7 +102,7 @@ class MystyqFrame(urwid.Frame):
                 urwid.Pile([self.information_text1, self.information_text2]),
                 urwid.Text(HEADER_DEFAULT, align='right'),
             ]), 'header'),
-            footer = self.footer_text
+            footer = urwid.AttrWrap(self.footer_text, 'footer')
         )
 
         self.render_table_list()
@@ -209,6 +210,7 @@ class MystyqFrame(urwid.Frame):
         if key in ('left', 'q', 'Q'):
             if self.render_table_values():
                 self._change_keybinds(self.keypress_in_table_session)
+        return super(MystyqFrame, self).keypress(size, key)
 
     def keypress_in_editor(self, size, key):
         if key == 'ctrl b':
