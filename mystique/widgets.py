@@ -10,8 +10,6 @@ class AutoCompoleteEditor(urwid.Edit):
 
 class QueryEditor(urwid.Edit):
 
-    __allowed_callbacks = ('close', 'execute',)
-
     def __init__(self, *args, **kwargs):
         kwargs.update(multiline=True)
         super(QueryEditor, self).__init__(*args, **kwargs)
@@ -34,4 +32,51 @@ class ErrorMessage(urwid.Text):
 
     def __init__(self, msg):
         super(ErrorMessage, self).__init__('ERROR! %s' % msg)
+
+
+class _AutoComplete(urwid.Edit):
+
+    def __init__(self, *args, **kwargs):
+        self._word_list = kwargs.get('word_list') or []
+        self._current_list = self._word_list
+        self._autocompleted = kwargs.get('autocompleted')
+        if 'word_list' in kwargs:
+            del kwargs['word_list']
+        if 'autocompleted' in kwargs:
+            del kwargs['autocompleted']
+        super(_AutoComplete, self).__init__(*args, **kwargs)
+
+    @property
+    def word_list(self):
+        return self._word_list
+    
+    @property
+    def current_list(self):
+        return self._current_list
+
+    def clear(self):
+        self.set_edit_text('')
+
+    def reset(self):
+        self.clear()
+        self._current_list = self._word_list
+
+    def is_active(self):
+        return True if self.get_edit_text().strip() else False
+
+    def keypress(self, size, key):
+        kp = super(_AutoComplete, self).keypress(size, key)
+        if self._autocompleted:
+            txt = self.get_edit_text().strip()
+            self._current_list = self.do_filter(txt)
+            self._autocompleted(self._current_list)
+        return kp
+
+    def do_filter(self, val):
+        return filter(lambda x:x.lower().startswith(val.lower()),
+                      self.word_list)
+
+
+class TableFilter(_AutoComplete):
+    pass
 

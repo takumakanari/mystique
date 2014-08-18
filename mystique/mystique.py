@@ -7,7 +7,7 @@ from mystique import config
 from mystique.db import Database, Table
 from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
-from mystique.widgets import QueryEditor, MouseEvCanceledButton
+from mystique.widgets import QueryEditor, MouseEvCanceledButton, TableFilter
 
 
 palette = [
@@ -30,7 +30,7 @@ _kb_focus_on_g = (
 )
 
 _kb_quit_on_q = (
-    ('q/Q', 'Quit'),
+    ('q(Q)', 'Quit'),
 )
 
 _kb_lr_pager = (
@@ -41,9 +41,10 @@ _kb_lr_pager = (
 keybinds = {
     'keypress_default' : (
         ('x', 'Open query editor'),
+        ('/', 'Open or close table filter'),
     ) + _kb_focus_on_g + _kb_quit_on_q,
     'keypress_in_table_session' : (
-        ('t', 'Back to table list'),
+        ('q(Q)', 'Back to table list'),
         ('d', 'show open description')
     ) + _kb_focus_on_g + _kb_lr_pager,
     'keypress_in_table_desc' : (
@@ -86,12 +87,15 @@ class MystyqFrame(urwid.Frame):
     def __init__(self, conf):
         self._config = conf
         self._database = Database(**conf['database'])
+        self._table_list = self._database.show_tables()
 
         self.information_text1 = txt(self._database.connection_string)
         self.information_text2 = txt('')
         self.footer_text = txt('')
         self.listbox = urwid.ListBox(urwid.SimpleListWalker([]))
         self.query_editor = None
+        self.table_filter = TableFilter(word_list=self._table_list,
+                                       autocompleted=self._do_table_filter)
         self._keypress_handler = self.keypress_default
         self._table_session = None
         self._current_focus_on_tablelist = 0
@@ -113,26 +117,33 @@ class MystyqFrame(urwid.Frame):
 
         def button_press(b):
             table = b.get_label()
-            logger.info('table=[%s] is choosen' % table)
             self._current_focus_on_tablelist = self.listbox.focus_position
+            logger.info('table=[%s] is choosen (focus: %d)' %
+                        (table, self._current_focus_on_tablelist))
+
             self._session = TableSession(self._database.get_table(table))
             if self.render_table_values():
                 self._change_keybinds(self.keypress_in_table_session)
+
             Events.table_values_rendered.send(self)
 
         self.clear_listbox()
 
-        tables = self._database.show_tables()
-        min_len = max(len(x) for x in tables)
+        if not self.table_filter_is_shown and self.table_filter.is_active():
+            self.toggle_table_filter(clear=False) # re-show table filter ...
 
-        for t in tables:
-            btn = urwid.AttrWrap(MouseEvCanceledButton(t, button_press),
-                                'button', 'buttnf')
-            btn = urwid.Padding(btn, align='left', min_width=min_len,
-                               width=('relative', min_len))
-            self.listbox.body.append(btn)
+        tables = self.table_filter.current_list
+        if tables:
+            min_len = max(len(x) for x in tables)
+            for t in tables:
+                btn = urwid.AttrWrap(MouseEvCanceledButton(t, button_press),
+                                    'button', 'buttnf')
+                btn = urwid.Padding(btn, align='left', min_width=min_len,
+                                    width=('relative', min_len))
+                self.listbox.body.append(btn)
+            self.listbox.body.set_focus(self._current_focus_on_tablelist)
+            self._current_focus_on_tablelist = 0
 
-        self.listbox.body.set_focus(self._current_focus_on_tablelist)
         Events.table_list_rendered.send(self)
 
     def render_table_values(self):
@@ -182,22 +193,41 @@ class MystyqFrame(urwid.Frame):
         return False
 
     def open_query_editor(self, default_query=None):
-        logger.debug('open query editor')
         self.query_editor = urwid.AttrWrap(QueryEditor('Query here ...\n',
                                           default_query or ''), 'editcp')
         self.clear_listbox(body=[self.query_editor])
 
+    def toggle_table_filter(self, clear=True):
+        if self.table_filter_is_shown:
+            self.table_filter.reset()
+            self.render_table_list()
+        else:
+            if clear:
+                self.table_filter.clear()
+            self.listbox.body.insert(0, self.table_filter)
+            self.focus_to_top()
+
+    def _do_table_filter(self, results):
+        self.render_table_list()
+
     def keypress_default(self, size, key):
+        if self.table_filter_is_shown:
+            if key == '/':
+                self.toggle_table_filter()
+            return super(MystyqFrame, self).keypress(size, key)
         if key == 'x':
             self._current_focus_on_tablelist = self.listbox.focus_position
             self.open_query_editor()
             self._change_keybinds(self.keypress_in_editor)
             return
+        elif key == '/':
+            self.toggle_table_filter()
+            return
         return self._common_keypresses(size, key, focus_on_g=True,
                                        exit_on_q=True)
 
     def keypress_in_table_session(self, size, key):
-        if key == 't':
+        if key in ('q', 'Q'):
             self.render_table_list()
             self._change_keybinds(self.keypress_default)
         elif key == 'd':
@@ -296,6 +326,13 @@ class MystyqFrame(urwid.Frame):
         if isinstance(v, urwid.AttrWrap):
             return isinstance(v.original_widget, QueryEditor)
         return False
+
+    @property
+    def table_filter_is_shown(self):
+        v = self.listbox.body and self.listbox.body[0]
+        if isinstance(v, urwid.AttrWrap):
+            return isinstance(v.original_widget, TableFilter)
+        return v is not None and isinstance(v, TableFilter)
 
 
 def info_of_session(view):
