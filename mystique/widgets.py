@@ -4,6 +4,28 @@ import urwid
 from mystique.log import logger
 
 
+class _DummyTxt(urwid.Text):
+
+    def __init__(self):
+        super(_DummyTxt, self).__init__('')
+
+
+class AppendableColumns(urwid.Columns):
+
+    def __init__(self, widget_list):
+        if len(widget_list):
+            super(AppendableColumns, self).__init__(widget_list)
+        else:
+            super(AppendableColumns, self).__init__([_DummyTxt()])
+
+    def optimize_me(self):
+        if len(self.widget_list) and isinstance(self.widget_list[0], _DummyTxt):
+            del self.widget_list[0]
+
+    def clear_me(self):
+        self.widget_list[:] = [_DummyTxt()]
+
+
 class AutoCompoleteEditor(urwid.Edit):
     pass
 

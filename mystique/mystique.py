@@ -7,10 +7,11 @@ from mystique import config
 from mystique.db import Database, Table
 from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
-from mystique.widgets import QueryEditor, MouseEvCanceledButton, TableFilter
+from mystique.widgets import AppendableColumns, QueryEditor, MouseEvCanceledButton, TableFilter
 
 
 palette = [
+    # name, foreground color, background color
     ('body','black','light gray', 'standout'),
     ('reverse','light gray','black'),
     ('header','light red','dark blue', 'bold'),
@@ -20,13 +21,14 @@ palette = [
     ('buttn','black','dark cyan'),
     ('buttnf','black','light gray','bold'),
     ('col_head', 'dark green', 'black', 'bold'),
-    ('error_message','dark red','white')
+    ('error_message','dark red','white'),
+    ('kb_desc_cmd', 'yellow', 'dark blue')
 ]
 
 
 _kb_focus_on_g = (
-    ('g', 'Focus to top'),
-    ('G', 'Focus to bottom')
+    ('g', 'FocusTop'),
+    ('G', 'FocusBottom')
 )
 
 _kb_quit_on_q = (
@@ -34,31 +36,31 @@ _kb_quit_on_q = (
 )
 
 _kb_lr_pager = (
-    ('right', 'Next page'),
-    ('left', 'Prev page')
+    ('right', 'Next'),
+    ('left', 'Prev')
 )
 
 keybinds = {
     'keypress_default' : (
-        ('x', 'Open query editor'),
-        ('/', 'Open or close table filter'),
+        ('x', 'QueryEditor'),
+        ('/', 'TableFilter'),
     ) + _kb_focus_on_g + _kb_quit_on_q,
     'keypress_in_table_session' : (
-        ('q(Q)', 'Back to table list'),
-        ('d', 'show open description')
+        ('q(Q)', 'Close'),
+        ('d', 'ShowDescription')
     ) + _kb_focus_on_g + _kb_lr_pager,
     'keypress_in_table_desc' : (
-        ('left/q/Q', 'Back to list'),
+        ('left/q/Q', 'Close'),
     ),
     'keypress_in_editor' : (
-        ('ctrl b', 'Execute query'),
-        ('ctrl x', 'Close query editor')
+        ('ctrl+b', 'ExecuteQuery'),
+        ('ctrl+x', 'Close')
     ),
     'keypress_in_query_result' : (
-        ('x', 'Reopen query editor'),
-        ('ctrl x', 'Close query editor'),
-        ('ctrl b', 'Execute query'),
-        ('q', 'Back to table list')
+        ('x', 'QueryEditor'),
+        ('ctrl+x', 'CloseQueryEditor'),
+        ('ctrl+b', 'Execute'),
+        ('q', 'Close')
     ) + _kb_focus_on_g + _kb_lr_pager
 }
 
@@ -92,6 +94,7 @@ class MystyqFrame(urwid.Frame):
         self.information_text1 = txt(self._database.connection_string)
         self.information_text2 = txt('')
         self.footer_text = txt('')
+        self.footer_columns = AppendableColumns([])
         self.listbox = urwid.ListBox(urwid.SimpleListWalker([]))
         self.query_editor = None
         self.table_filter = TableFilter(word_list=self._table_list,
@@ -106,7 +109,7 @@ class MystyqFrame(urwid.Frame):
                 urwid.Pile([self.information_text1, self.information_text2]),
                 urwid.Text(HEADER_DEFAULT, align='right'),
             ]), 'header'),
-            footer = urwid.AttrWrap(self.footer_text, 'footer')
+            footer = urwid.AttrWrap(self.footer_columns, 'footer')
         )
 
         self.render_table_list()
@@ -304,12 +307,15 @@ class MystyqFrame(urwid.Frame):
         self.information_text2.set_text(v or '')
 
     def update_keybind_information(self, keybinds):
-        txts = []
-        for conf in keybinds:
-            txts.append('%s:%s' % (conf[0], conf[1]))
-        self.footer_text.set_text('  '.join(txts))
-        #self.footer_text.widget_list.append(txt('c'))
-        #self.footer_text.render()
+        self.footer_columns.clear_me()
+        for cmd, desc in keybinds:
+            self.footer_columns.widget_list.append(
+                urwid.Columns([
+                    ('fixed', len(cmd), urwid.AttrWrap(txt(cmd), 'kb_desc_cmd')),
+                    ('fixed', len(desc), txt(desc))
+                ])
+            )
+        self.footer_columns.optimize_me()
 
     def _change_keybinds(self, handle_func):
         self._keypress_handler = handle_func
