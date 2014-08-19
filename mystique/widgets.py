@@ -79,6 +79,7 @@ class _AutoComplete(urwid.Edit):
         if 'autocompleted' in kwargs:
             del kwargs['autocompleted']
         super(_AutoComplete, self).__init__(*args, **kwargs)
+        self._last_txt = self.get_edit_text()
 
     @property
     def word_list(self):
@@ -87,6 +88,10 @@ class _AutoComplete(urwid.Edit):
     @property
     def current_list(self):
         return self._current_list
+
+    def get_edit_text(self, *args, **kwargs):
+        return super(_AutoComplete,
+                     self).get_edit_text(*args, **kwargs).strip()
 
     def clear(self):
         self.set_edit_text('')
@@ -101,9 +106,11 @@ class _AutoComplete(urwid.Edit):
     def keypress(self, size, key):
         kp = super(_AutoComplete, self).keypress(size, key)
         if self._autocompleted:
-            txt = self.get_edit_text().strip()
-            self._current_list = self.do_filter(txt)
-            self._autocompleted(self._current_list)
+            txt = self.get_edit_text()
+            if txt != self._last_txt:
+                self._current_list = self.do_filter(txt)
+                self._last_txt = txt
+                self._autocompleted(self._current_list)
         return kp
 
     def do_filter(self, val):
