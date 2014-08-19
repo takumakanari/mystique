@@ -4,6 +4,15 @@ import urwid
 from mystique.log import logger
 
 
+def txt(v, weight=0, align='left'):
+    d = urwid.Text(v or '', align=align)
+    return d if not weight else ('weight', weight, d)
+
+
+def ftxt(v, s):
+    return ('fixed', s, txt(v))
+
+
 class _DummyTxt(urwid.Text):
 
     def __init__(self):
@@ -21,6 +30,9 @@ class AppendableColumns(urwid.Columns):
     def optimize_me(self):
         if len(self.widget_list) and isinstance(self.widget_list[0], _DummyTxt):
             del self.widget_list[0]
+
+    def replace_me(self, *widget_list):
+        self.widget_list[:] = widget_list
 
     def clear_me(self):
         self.widget_list[:] = [_DummyTxt()]
@@ -71,7 +83,7 @@ class _AutoComplete(urwid.Edit):
     @property
     def word_list(self):
         return self._word_list
-    
+
     @property
     def current_list(self):
         return self._current_list

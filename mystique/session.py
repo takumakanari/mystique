@@ -70,7 +70,7 @@ class TableSession(_Session):
 
 class FreeQuerySession(_Session):
 
-    __query_digest_max_len = 60
+    __query_digest_max_len = 80
 
     def __init__(self, cursor, query):
         super(FreeQuerySession, self).__init__()

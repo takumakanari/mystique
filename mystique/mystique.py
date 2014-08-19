@@ -7,7 +7,8 @@ from mystique import config
 from mystique.db import Database, Table
 from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
-from mystique.widgets import AppendableColumns, QueryEditor, MouseEvCanceledButton, TableFilter
+from mystique.widgets import AppendableColumns, QueryEditor, \
+ MouseEvCanceledButton, TableFilter, txt, ftxt
 
 
 palette = [
@@ -19,9 +20,9 @@ palette = [
     ('editcp','black','white', 'bold'),
     ('bright','dark gray','light gray', ('bold','standout')),
     ('buttn','black','dark cyan'),
-    ('buttnf','black','light gray','bold'),
+    ('buttnf','dark blue','yellow','bold'),
     ('col_head', 'dark green', 'black', 'bold'),
-    ('error_message','dark red','white'),
+    ('error_message','light red','white'),
     ('kb_desc_cmd', 'yellow', 'dark blue')
 ]
 
@@ -50,8 +51,8 @@ keybinds = {
         ('d', 'ShowDescription')
     ) + _kb_focus_on_g + _kb_lr_pager,
     'keypress_in_table_desc' : (
-        ('left/q/Q', 'Close'),
-    ),
+        ('q(Q)', 'Close'),
+    ) + _kb_focus_on_g,
     'keypress_in_editor' : (
         ('ctrl+b', 'ExecuteQuery'),
         ('ctrl+x', 'Close')
@@ -68,18 +69,11 @@ keybinds = {
 HEADER_DEFAULT = '%s %s' % (mystique.__mystique__, mystique.__version__)
 
 
-def txt(v, weight=0, align='left'):
-    d = urwid.Text(v or '', align=align)
-    return d if not weight else ('weight', weight, d)
-
-
-WG_COL_SEP = txt('|')
-
-
 class Events(object):
     table_list_rendered = blinker.signal('table_list_rendered')
     table_desc_rendered = blinker.signal('table_desc_rendered')
     table_values_rendered = blinker.signal('table_values_rendered')
+    query_editor_opened = blinker.signal('query_editor_opened')
     query_result_rendered = blinker.signal('query_result_rendered')
     keybind_changed = blinker.signal('keybind_changed')
 
@@ -93,7 +87,6 @@ class MystyqFrame(urwid.Frame):
 
         self.information_text1 = txt(self._database.connection_string)
         self.information_text2 = txt('')
-        self.footer_text = txt('')
         self.footer_columns = AppendableColumns([])
         self.listbox = urwid.ListBox(urwid.SimpleListWalker([]))
         self.query_editor = None
@@ -113,6 +106,10 @@ class MystyqFrame(urwid.Frame):
         )
 
         self.render_table_list()
+
+    @property
+    def db_name(self):
+        return self._database.config('db')
 
     def render_table_list(self):
         self._session = None
@@ -160,22 +157,24 @@ class MystyqFrame(urwid.Frame):
         result_desc = self._session.result_desc()
         logger.debug('%s results in %s' % (len(result_list), str(result_desc)))
 
-        names = (txt('', weight=1),) + tuple(txt(x, weight=2) for x in result_desc)
-        header = urwid.AttrWrap(urwid.Columns(names), 'col_head')
+        idx_col_len = len(str(len(result_list) + self._session.offset))
+
+        names = (ftxt('', idx_col_len),) + tuple(txt(x) for x in result_desc)
+        header = urwid.AttrWrap(urwid.Columns(names, dividechars=1), 'col_head')
         self.clear_listbox(body=[header])
 
         for c, values in enumerate(result_list):
             index_str = str(c + 1 + self._session.offset)
-            line = (txt(index_str, weight=1),) + tuple(txt(v, weight=2) for v in values)
-            self.listbox.body.append(urwid.Columns(line))
+            line = (ftxt(index_str, idx_col_len),) + tuple(txt(v) for v in values)
+            self.listbox.body.append(urwid.Columns(line, dividechars=1))
 
         Events.table_values_rendered.send(self)
 
         return True
 
     def render_error(self, msg):
-        m = urwid.AttrWrap(txt('ERROR! %s' % msg), 'error_message')
-        self.footer_text.set_text(msg)
+        m = urwid.AttrWrap(txt('Ooops! %s' % msg), 'error_message')
+        self.footer_columns.replace_me(m)
 
     def render_table_desc(self):
         header_keys = ('name', 'type', 'nullable', 'key', 'default', 'extra')
@@ -187,7 +186,7 @@ class MystyqFrame(urwid.Frame):
         Events.table_desc_rendered.send(self)
 
     def execute_sql_in_query_editor(self):
-        query = self.query_editor.get_query()
+        query = self.query_editor.original_widget.get_query()
         if query:
             self._session = FreeQuerySession(self._database.cursor, query)
             if self.render_table_values():
@@ -196,9 +195,10 @@ class MystyqFrame(urwid.Frame):
         return False
 
     def open_query_editor(self, default_query=None):
-        self.query_editor = urwid.AttrWrap(QueryEditor('Query here ...\n',
-                                          default_query or ''), 'editcp')
+        self.query_editor = urwid.LineBox(urwid.AttrWrap(QueryEditor(default_query or ''),
+                                          'editcp'), title='SQL')
         self.clear_listbox(body=[self.query_editor])
+        Events.query_editor_opened.send(self)
 
     def toggle_table_filter(self, clear=True):
         if self.table_filter_is_shown:
@@ -240,10 +240,10 @@ class MystyqFrame(urwid.Frame):
                                        focus_on_g=True, lr_pager=True)
 
     def keypress_in_table_desc(self, size, key):
-        if key in ('left', 'q', 'Q'):
+        if key in ('q', 'Q'):
             if self.render_table_values():
                 self._change_keybinds(self.keypress_in_table_session)
-        return super(MystyqFrame, self).keypress(size, key)
+        return self._common_keypresses(size, key, focus_on_g=True)
 
     def keypress_in_editor(self, size, key):
         if key == 'ctrl b':
@@ -311,8 +311,8 @@ class MystyqFrame(urwid.Frame):
         for cmd, desc in keybinds:
             self.footer_columns.widget_list.append(
                 urwid.Columns([
-                    ('fixed', len(cmd), urwid.AttrWrap(txt(cmd), 'kb_desc_cmd')),
-                    ('fixed', len(desc), txt(desc))
+                    ('fixed', len(cmd), txt(cmd)),
+                    ('fixed', len(desc), urwid.AttrWrap(txt(desc), 'kb_desc_cmd'))
                 ])
             )
         self.footer_columns.optimize_me()
@@ -350,7 +350,11 @@ def info_of_table_desc(view):
 
 
 def info_of_table_list(view):
-    view.update_information('show tables')
+    view.update_information('%s tables' % view.db_name)
+
+
+def info_of_query_editor(view):
+    view.update_information('query for %s' % view.db_name)
 
 
 def keybind_information_in_footer(*args, **kwargs):
@@ -360,6 +364,7 @@ def keybind_information_in_footer(*args, **kwargs):
 
 def main():
     logger.debug('Bootup mystique...')
+    Events.query_editor_opened.connect(info_of_query_editor)
     Events.table_list_rendered.connect(info_of_table_list)
     Events.table_values_rendered.connect(info_of_session)
     Events.table_desc_rendered.connect(info_of_table_desc)
