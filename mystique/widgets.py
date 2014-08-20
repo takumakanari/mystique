@@ -13,6 +13,21 @@ def ftxt(v, s):
     return ('fixed', s, txt(v))
 
 
+class _OriginalWidgetWrapMixin(object):
+
+    def __getattribute__(self, name):
+        try:
+            return super(_OriginalWidgetWrapMixin,self).__getattribute__(name)
+        except AttributeError:
+            return self.original_widget.__getattribute__(name)
+
+
+def wrap_widget(cls, *args, **kwargs):
+    class _Wrapped(cls, _OriginalWidgetWrapMixin):
+        pass
+    return _Wrapped(*args, **kwargs)
+
+
 class _DummyTxt(urwid.Text):
 
     def __init__(self):
@@ -42,14 +57,14 @@ class AutoCompoleteEditor(urwid.Edit):
     pass
 
 
-class QueryEditor(urwid.Edit):
+class QueryEditor(urwid.LineBox):
 
-    def __init__(self, *args, **kwargs):
-        kwargs.update(multiline=True)
-        super(QueryEditor, self).__init__(*args, **kwargs)
+    def __init__(self, query=None, title='SQL', attr='editcp'):
+        self.body = urwid.AttrWrap(urwid.Edit('', query or ''), attr)
+        super(QueryEditor, self).__init__(self.body, title)
 
     def get_query(self):
-        return self.optimize_query(self.get_edit_text())
+        return self.optimize_query(self.body.get_edit_text())
 
     @classmethod
     def optimize_query(cls, src):
@@ -90,8 +105,8 @@ class _AutoComplete(urwid.Edit):
         return self._current_list
 
     def get_edit_text(self, *args, **kwargs):
-        return super(_AutoComplete,
-                     self).get_edit_text(*args, **kwargs).strip()
+        return super(_AutoComplete, self).\
+            get_edit_text(*args, **kwargs).strip()
 
     def clear(self):
         self.set_edit_text('')

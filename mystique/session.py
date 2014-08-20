@@ -40,6 +40,9 @@ class _Session(object):
     def name(self):
         return self.__str__()
 
+    def default_query(self):
+        return None
+
     def __str__(self):
         return str(self.__class__)
 
@@ -62,6 +65,9 @@ class TableSession(_Session):
 
     def name(self):
         return self.table.name
+
+    def default_query(self):
+        return 'select * from %s limit %d' % (self.table.name, self.limit)
 
     def __str__(self):
         return 'table: %s (%d - %d)' % (self.table.name, self.index_from_1,
@@ -97,6 +103,9 @@ class FreeQuerySession(_Session):
             del ret[len(ret) - 1]
 
         return ret
+
+    def default_query(self):
+        return self.query
 
     def result_desc(self):
         if self._current_result_desc is None:

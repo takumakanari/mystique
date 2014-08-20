@@ -48,7 +48,9 @@ keybinds = {
     ) + _kb_focus_on_g + _kb_quit_on_q,
     'keypress_in_table_session' : (
         ('q(Q)', 'Close'),
-        ('d', 'ShowDescription')
+        ('d', 'ShowDescription'),
+        ('ctrl+x', 'Execute'),
+        ('esc', 'CloseEditor')
     ) + _kb_focus_on_g + _kb_lr_pager,
     'keypress_in_table_desc' : (
         ('q(Q)', 'Close'),
@@ -59,8 +61,8 @@ keybinds = {
     ),
     'keypress_in_query_result' : (
         ('x', 'QueryEditor'),
-        ('esc', 'CloseQueryEditor'),
         ('ctrl+x', 'Execute'),
+        ('esc', 'CloseEditor'),
         ('q', 'Close')
     ) + _kb_focus_on_g + _kb_lr_pager
 }
@@ -155,8 +157,6 @@ class MystyqFrame(urwid.Frame):
             return False
 
         result_desc = self._session.result_desc()
-        logger.debug('%s results in %s' % (len(result_list), str(result_desc)))
-
         idx_col_len = len(str(len(result_list) + self._session.offset))
 
         names = (ftxt('', idx_col_len),) + tuple(txt(x) for x in result_desc)
@@ -186,7 +186,7 @@ class MystyqFrame(urwid.Frame):
         Events.table_desc_rendered.send(self)
 
     def execute_sql_in_query_editor(self):
-        query = self.query_editor.original_widget.get_query()
+        query = self.query_editor.get_query()
         if query:
             self._session = FreeQuerySession(self._database.cursor, query)
             if self.render_table_values():
@@ -194,10 +194,13 @@ class MystyqFrame(urwid.Frame):
             return True
         return False
 
-    def open_query_editor(self, default_query=None):
-        self.query_editor = urwid.LineBox(urwid.AttrWrap(QueryEditor(default_query or ''),
-                                          'editcp'), title='SQL')
-        self.clear_listbox(body=[self.query_editor])
+    def open_query_editor(self, query=None, insert_top=False):
+        self.query_editor = QueryEditor(query=query, attr='editcp')
+        if insert_top:
+            self.listbox.body.insert(0, self.query_editor)
+        else:
+            self.clear_listbox(body=[self.query_editor])
+        self.focus_to_top()
         Events.query_editor_opened.send(self)
 
     def toggle_table_filter(self, clear=True):
@@ -230,12 +233,23 @@ class MystyqFrame(urwid.Frame):
                                        exit_on_q=True)
 
     def keypress_in_table_session(self, size, key):
+        if self.query_editor_is_shown:
+            if key == 'esc':
+                del self.listbox.body[0]
+                Events.table_values_rendered.send(self)
+            elif key == 'ctrl x':
+                self.execute_sql_in_query_editor()
+            return self._common_keypresses(size, key)
         if key in ('q', 'Q'):
             self.render_table_list()
             self._change_keybinds(self.keypress_default)
         elif key == 'd':
             self.render_table_desc()
             self._change_keybinds(self.keypress_in_table_desc)
+        elif key == 'x':
+            self.open_query_editor(query=self.session.default_query(),
+                                   insert_top=True)
+            return
         return self._common_keypresses(size, key,
                                        focus_on_g=True, lr_pager=True)
 
@@ -260,12 +274,13 @@ class MystyqFrame(urwid.Frame):
             if key == 'esc':
                 del self.listbox.body[0]
                 return
-            if key == 'ctrl x':
+            elif key == 'ctrl x':
                 self.execute_sql_in_query_editor()
-            return super(MystyqFrame, self).keypress(size, key)
-        if key == 'x': # re-open query editor
-            self.listbox.body.insert(0, self.query_editor)
-            self.focus_to_top()
+                Events.table_values_rendered.send(self)
+            return self._common_keypresses(size, key)
+        if key == 'x':
+            self.open_query_editor(query=self.session.default_query(),
+                                   insert_top=True)
             return
         elif key == 'q':
             self.render_table_list()
