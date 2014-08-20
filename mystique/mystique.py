@@ -80,7 +80,7 @@ class Events(object):
     keybind_changed = blinker.signal('keybind_changed')
 
 
-class MystyqFrame(urwid.Frame):
+class MystiqueView(urwid.Frame):
 
     def __init__(self, conf):
         self._config = conf
@@ -98,7 +98,7 @@ class MystyqFrame(urwid.Frame):
         self._table_session = None
         self._current_focus_on_tablelist = 0
 
-        super(MystyqFrame, self).__init__(
+        super(MystiqueView, self).__init__(
             self.listbox,
             header = urwid.AttrWrap(urwid.Columns([
                 urwid.Pile([self.information_text1, self.information_text2]),
@@ -220,7 +220,7 @@ class MystyqFrame(urwid.Frame):
         if self.table_filter_is_shown:
             if key == '/':
                 self.toggle_table_filter()
-            return super(MystyqFrame, self).keypress(size, key)
+            return super(MystiqueView, self).keypress(size, key)
         if key == 'x':
             self._current_focus_on_tablelist = self.listbox.focus_position
             self.open_query_editor()
@@ -267,7 +267,7 @@ class MystyqFrame(urwid.Frame):
             self.render_table_list()
             self._change_keybinds(self.keypress_default)
         else:
-            return super(MystyqFrame, self).keypress(size, key)
+            return super(MystiqueView, self).keypress(size, key)
 
     def keypress_in_query_result(self, size, key):
         if self.query_editor_is_shown:
@@ -303,7 +303,7 @@ class MystyqFrame(urwid.Frame):
             elif key == 'left' and self._session.has_prev():
                 self._session.prev_page()
                 self.render_table_values()
-        return super(MystyqFrame, self).keypress(size, key)
+        return super(MystiqueView, self).keypress(size, key)
 
     def keypress(self, size, key):
         return self._keypress_handler(size, key)
@@ -380,7 +380,7 @@ def main():
     Events.table_values_rendered.connect(info_of_session)
     Events.table_desc_rendered.connect(info_of_table_desc)
     Events.keybind_changed.connect(keybind_information_in_footer)
-    view = MystyqFrame(config.load_config())
+    view = MystiqueView(config.load_config())
     urwid.MainLoop(view, palette).run()
 
 
