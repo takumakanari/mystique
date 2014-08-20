@@ -45,6 +45,7 @@ keybinds = {
     'keypress_default' : (
         ('x', 'Query'),
         ('/', 'Filter'),
+        ('esc', 'CloseFilter'),
     ) + _kb_focus_on_g + _kb_quit_on_q,
     'keypress_in_table_session' : (
         ('q(Q)', 'Close'),
@@ -133,7 +134,7 @@ class MystiqueView(urwid.Frame):
         self.clear_listbox()
 
         if not self.table_filter_is_shown and self.table_filter.body.is_active():
-            self.toggle_table_filter(clear=False) # re-show table filter ...
+            self.open_table_filter(clear=False) # re-show table filter
 
         tables = self.table_filter.body.current_list
         if tables:
@@ -204,15 +205,16 @@ class MystiqueView(urwid.Frame):
         self.focus_to_top()
         Events.query_editor_opened.send(self)
 
-    def toggle_table_filter(self, clear=True):
-        if self.table_filter_is_shown:
-            self.table_filter.body.reset()
-            self.render_table_list()
-        else:
-            if clear:
-                self.table_filter.body.clear()
+    def open_table_filter(self, clear=True):
+        if clear:
+            self.table_filter.body.clear()
+        if not self.table_filter_is_shown:
             self.listbox.body.insert(0, self.table_filter)
-            self.focus_to_top()
+        self.focus_to_top()
+
+    def close_table_filter(self):
+        self.table_filter.body.reset()
+        self.render_table_list()
 
     def _do_table_filter(self, results):
         self.render_table_list()
@@ -220,7 +222,10 @@ class MystiqueView(urwid.Frame):
     def keypress_default(self, size, key):
         if self.table_filter_is_shown:
             if key == '/':
-                self.toggle_table_filter()
+                self.open_table_filter(clear=False)
+                return
+            elif key == 'esc':
+                self.close_table_filter()
             return super(MystiqueView, self).keypress(size, key)
         if key == 'x':
             self._current_focus_on_tablelist = self.listbox.focus_position
@@ -228,7 +233,7 @@ class MystiqueView(urwid.Frame):
             self._change_keybinds(self.keypress_in_editor)
             return
         elif key == '/':
-            self.toggle_table_filter()
+            self.open_table_filter()
             return
         return self._common_keypresses(size, key, focus_on_g=True,
                                        exit_on_q=True)
