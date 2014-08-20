@@ -60,7 +60,7 @@ class AutoCompoleteEditor(urwid.Edit):
 class QueryEditor(urwid.LineBox):
 
     def __init__(self, query=None, title='SQL', attr='editcp'):
-        self.body = urwid.AttrWrap(urwid.Edit('', query or ''), attr)
+        self.body = urwid.AttrWrap(urwid.Edit('', query or '', multiline=True), attr)
         super(QueryEditor, self).__init__(self.body, title)
 
     def get_query(self):
@@ -133,6 +133,8 @@ class _AutoComplete(urwid.Edit):
                       self.word_list)
 
 
-class TableFilter(_AutoComplete):
-    pass
+class TableFilter(urwid.LineBox):
 
+    def __init__(self, *args, **kwargs):
+        self.body = _AutoComplete(*args, **kwargs)
+        super(TableFilter, self).__init__(self.body)

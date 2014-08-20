@@ -17,7 +17,7 @@ palette = [
     ('reverse','light gray','black'),
     ('header','light red','dark blue', 'bold'),
     ('footer','light gray','black',),
-    ('editcp','black','white', 'bold'),
+    ('editcp','white','black'),
     ('bright','dark gray','light gray', ('bold','standout')),
     ('buttn','black','dark cyan'),
     ('buttnf','dark blue','yellow','bold'),
@@ -28,8 +28,8 @@ palette = [
 
 
 _kb_focus_on_g = (
-    ('g', 'FocusTop'),
-    ('G', 'FocusBottom')
+    ('g', 'Top'),
+    ('G', 'Bottom')
 )
 
 _kb_quit_on_q = (
@@ -43,25 +43,26 @@ _kb_lr_pager = (
 
 keybinds = {
     'keypress_default' : (
-        ('x', 'QueryEditor'),
-        ('/', 'TableFilter'),
+        ('x', 'Query'),
+        ('/', 'Filter'),
     ) + _kb_focus_on_g + _kb_quit_on_q,
     'keypress_in_table_session' : (
         ('q(Q)', 'Close'),
-        ('d', 'ShowDescription'),
-        ('ctrl+x', 'Execute'),
+        ('d', 'Description'),
+        ('x', 'Query'),
+        ('ctrl+x', 'Run'),
         ('esc', 'CloseEditor')
     ) + _kb_focus_on_g + _kb_lr_pager,
     'keypress_in_table_desc' : (
         ('q(Q)', 'Close'),
     ) + _kb_focus_on_g,
     'keypress_in_editor' : (
-        ('ctrl+x', 'ExecuteQuery'),
+        ('ctrl+x', 'Run'),
         ('esc', 'Close')
     ),
     'keypress_in_query_result' : (
-        ('x', 'QueryEditor'),
-        ('ctrl+x', 'Execute'),
+        ('x', 'Query'),
+        ('ctrl+x', 'Run'),
         ('esc', 'CloseEditor'),
         ('q', 'Close')
     ) + _kb_focus_on_g + _kb_lr_pager
@@ -131,10 +132,10 @@ class MystiqueView(urwid.Frame):
 
         self.clear_listbox()
 
-        if not self.table_filter_is_shown and self.table_filter.is_active():
+        if not self.table_filter_is_shown and self.table_filter.body.is_active():
             self.toggle_table_filter(clear=False) # re-show table filter ...
 
-        tables = self.table_filter.current_list
+        tables = self.table_filter.body.current_list
         if tables:
             min_len = max(len(x) for x in tables)
             for t in tables:
@@ -205,11 +206,11 @@ class MystiqueView(urwid.Frame):
 
     def toggle_table_filter(self, clear=True):
         if self.table_filter_is_shown:
-            self.table_filter.reset()
+            self.table_filter.body.reset()
             self.render_table_list()
         else:
             if clear:
-                self.table_filter.clear()
+                self.table_filter.body.clear()
             self.listbox.body.insert(0, self.table_filter)
             self.focus_to_top()
 

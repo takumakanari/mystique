@@ -32,7 +32,7 @@ class Database(object):
     def show_tables(self):
         self.cursor.execute('show tables')
         return map(lambda x:x[0], self.cursor.fetchall())
-    
+
     def get_table(self, name):
         return Table(self.cursor, name)
 
@@ -42,8 +42,8 @@ class Database(object):
 
     @property
     def connection_string(self):
-        return '%s:%d %s' % (self.config('host'),
-                             self.config('port'), self.config('db'))
+        return '%s@%s:%d %s' % (self.config('user'), self.config('host'),
+                                self.config('port'), self.config('db'))
 
 
 class Table(object):
@@ -81,5 +81,5 @@ class Table(object):
             )
                 self._desc.append(data)
         return self._desc
-    
+
 #database = Database()
