@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding:utf-8 -*-
-__mystique__ = 'Mystiqie'
+__mystique__ = 'Mystique'
 __version__ = '0.0.1'
 __author__ = 'takumakanari (chemtrails.t@gmail.com)'
 __license__ = 'MIT License'

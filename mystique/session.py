@@ -40,6 +40,9 @@ class _Session(object):
     def name(self):
         return self.__str__()
 
+    def word_list(self):
+        return ()
+
     def default_query(self):
         return None
 
@@ -68,6 +71,9 @@ class TableSession(_Session):
 
     def default_query(self):
         return 'select * from %s limit %d' % (self.table.name, self.limit)
+
+    # def word_list(self):
+    #     return self.result_desc()
 
     def __str__(self):
         return 'table: %s (%d - %d)' % (self.table.name, self.index_from_1,

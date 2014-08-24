@@ -57,20 +57,6 @@ class AutoCompoleteEditor(urwid.Edit):
     pass
 
 
-class QueryEditor(urwid.LineBox):
-
-    def __init__(self, query=None, title='SQL', attr='editcp'):
-        self.body = urwid.AttrWrap(urwid.Edit('', query or '', multiline=True), attr)
-        super(QueryEditor, self).__init__(self.body, title)
-
-    def get_query(self):
-        return self.optimize_query(self.body.get_edit_text())
-
-    @classmethod
-    def optimize_query(cls, src):
-        return src.strip()
-
-
 class MouseEvCanceledButton(urwid.Button):
     """Skips any mouse event"""
     def mouse_event(self, size, event, button, x, y, focus):
@@ -95,6 +81,7 @@ class _AutoComplete(urwid.Edit):
             del kwargs['autocompleted']
         super(_AutoComplete, self).__init__(*args, **kwargs)
         self._last_txt = self.get_edit_text()
+        self._is_active = False
 
     @property
     def word_list(self):
@@ -115,8 +102,14 @@ class _AutoComplete(urwid.Edit):
         self.clear()
         self._current_list = self._word_list
 
+    def activate(self):
+        self._is_active = True
+
+    def deactivate(self):
+        self._is_active = False
+
     def is_active(self):
-        return True if self.get_edit_text().strip() else False
+       return self._is_active
 
     def keypress(self, size, key):
         kp = super(_AutoComplete, self).keypress(size, key)
@@ -138,3 +131,159 @@ class TableFilter(urwid.LineBox):
     def __init__(self, *args, **kwargs):
         self.body = _AutoComplete(*args, **kwargs)
         super(TableFilter, self).__init__(self.body)
+
+
+class _QuerySyntaxAutoComplete(_AutoComplete):
+
+    _sql_words = ('absolute', 'action', 'add', 'all', 'allocate',
+                  'alter', 'and', 'any', 'are', 'as', 'asc', 'assertion',
+                  'at', 'authorization', 'avg', 'begin', 'between', 'bit',
+                  'bit_length', 'both', 'by', 'cascade', 'cascaded', 'case',
+                  'cast', 'catalog', 'char', 'character', 'character_length',
+                  'char_length', 'check', 'close', 'coalesce', 'collate', 'collation',
+                  'column', 'commit', 'connect', 'connection', 'constraint', 'constraints',
+                  'continue', 'convert', 'corresponding', 'create', 'cross', 'current',
+                  'current_date', 'current_time', 'current_timestamp', 'current_user',
+                  'cursor', 'date', 'day', 'deallocate', 'dec', 'decimal', 'declare',
+                  'default', 'deferrable', 'deferred', 'delete', 'desc', 'describe',
+                  'descriptor', 'diagnostics', 'disconnect', 'distinct', 'domain', 'double',
+                  'drop', 'else', 'end', 'end-exec', 'escape', 'except', 'exception', 'exec',
+                  'execute', 'exists', 'external', 'extract', 'false', 'fetch', 'first', 'float',
+                  'for', 'foreign', 'found', 'from', 'full', 'get', 'global', 'go', 'goto',
+                  'grant', 'group', 'having', 'hour', 'identity', 'immediate', 'in', 'indicator',
+                  'initially', 'inner', 'input', 'insensitive', 'insert', 'int', 'integer', 'intersect',
+                  'interval', 'into', 'is', 'isolation', 'join', 'key', 'language', 'last', 'leading',
+                  'left', 'level', 'like', 'local', 'lower', 'match', 'max', 'min', 'minute', 'module',
+                  'month', 'names', 'national', 'natural', 'nchar', 'next', 'no', 'not', 'null', 'nullif',
+                  'numeric', 'octet_length', 'of', 'on', 'only', 'open', 'option', 'or', 'order', 'outer',
+                  'output', 'overlaps', 'pad', 'partial', 'position', 'precision', 'prepare', 'preserve',
+                  'primary', 'prior', 'privileges', 'procedure', 'public', 'read', 'real', 'references',
+                  'relative', 'restrict', 'revoke', 'right', 'rollback', 'rows', 'schema', 'scroll', 'second',
+                  'section', 'select', 'session', 'session_user', 'set', 'size', 'smallint', 'some', 'space',
+                  'sql', 'sqlcode', 'sqlerror', 'sqlstate', 'substring', 'sum', 'system_user', 'table', 'temporary',
+                  'then', 'time', 'timestamp', 'timezone_hour', 'timezone_minute', 'to', 'trailing', 'transaction',
+                  'translate', 'translation', 'trim', 'true', 'union', 'unique', 'unknown', 'update', 'upper', 'usage',
+                  'user', 'using', 'value', 'values', 'varchar', 'varying', 'view', 'when', 'whenever', 'where', 'with',
+                  'work', 'write', 'year', 'zone', 'count', 'count(*)', 'group by', 'order by')
+
+    def __init__(self, *args, **kwargs):
+        if 'custom_word_list' in kwargs:
+            _custom_word_list = kwargs['custom_word_list'] or ()
+            del kwargs['custom_word_list']
+        else:
+            _custom_word_list = ()
+        kwargs.update(
+            word_list = self._sql_words + _custom_word_list,
+            multiline = True
+        )
+        super(_QuerySyntaxAutoComplete, self).__init__(*args, **kwargs)
+        self.edit_pos_from = -1
+        self.edit_pos_to = -1
+
+    def get_possible_word(self, val):
+        self.edit_pos_from = -1
+        self.edit_pos_to = -1
+        val_len = len(val)
+        pos = self.edit_pos
+        if pos == val_len or (val_len > pos and val[pos] in (' ', '\n')):
+            idx = pos - 1
+            while idx >= 0:
+                self.edit_pos_from = idx
+                self.edit_pos_to = pos
+                if val[idx] in (' ', '.', '\n'):
+                    self.edit_pos_from = idx + 1
+                    return val[self.edit_pos_from:self.edit_pos_to]
+                idx -= 1
+        if self.edit_pos_from > -1 and self.edit_pos_to > -1:
+            return val[self.edit_pos_from:self.edit_pos_to]
+        else:
+            return None
+
+    def insert(self, word):
+        logger.debug('insert [%s] %d/%d' % (word, self.edit_pos_from,
+                                            self.edit_pos_to))
+        t = self.get_edit_text()
+        buf = []
+        if self.edit_pos_from > 0:
+            buf.append(t[:self.edit_pos_from])
+        buf.append(word)
+        if self.edit_pos_to > 0:
+            buf.append(t[self.edit_pos_to:])
+        self.set_edit_text(''.join(buf))
+        self.set_edit_pos(self.edit_pos_from + len(word) + 1)
+
+    def do_filter(self, val):
+        possible_word = self.get_possible_word(val)
+        if not possible_word or len(possible_word) < 2:
+            return []
+        possible_word = possible_word.lower()
+        logger.debug('possible_word: "%s"' % possible_word)
+        return filter(lambda x:x.lower().startswith(possible_word),
+                      self.word_list)
+
+
+class QueryEditor(urwid.LineBox):
+
+    def __init__(self, query=None, title='SQL', attr='editcp',
+                 custom_word_list=(), autocompleted=None, on_tab=None):
+        editor = _QuerySyntaxAutoComplete('', query or '', autocompleted=autocompleted,
+                                          custom_word_list=custom_word_list)
+        self.body = urwid.AttrWrap(editor, attr)
+        self._on_tab = on_tab
+        super(QueryEditor, self).__init__(self.body, title)
+
+    def get_query(self):
+        return self.optimize_query(self.body.get_edit_text())
+
+    def keypress(self, size, key):
+        if key == 'tab' and self._on_tab:
+            self._on_tab()
+            return
+        return super(QueryEditor, self).keypress(size, key)
+
+    @classmethod
+    def optimize_query(cls, src):
+        return src.strip()
+
+
+class QuerySuggention(urwid.Columns):
+
+    def __init__(self, words=(), query_editor=None, on_select=None):
+        self.query_editor = query_editor
+        self._on_select = on_select
+        self.update(words or [''])
+
+    def update(self, words):
+        super(QuerySuggention, self).__init__(self._make_data(words),
+                                             dividechars=1)
+
+    def keypress(self, size, key):
+        if key == 'tab':
+            pos = self.focus_position
+            if len(self.widget_list) > pos + 1:
+                self.set_focus(pos + 1)
+            else:
+                self.set_focus(0)
+        elif key == 'enter':
+            if self.query_editor:
+                t = self.widget_list[self.focus_position].get_text()[0]
+                logger.debug('"%s" => %s' % (t, self.query_editor))
+                self.query_editor.body.insert(t)
+                if self._on_select:
+                    self._on_select()
+        return super(QuerySuggention, self).keypress(size, key)
+
+    @classmethod
+    def _make_data(cls, words):
+        def _s(x):
+            return urwid.AttrWrap(urwid.SelectableIcon(x, 0),
+                                 'button', 'buttnf')
+        return tuple(('fixed', len(x), _s(x)) for x in words)
+
+
+class QuerySuggentionBox(urwid.LineBox):
+
+    def __init__(self, *args, **kwargs):
+        self.body = QuerySuggention(*args, **kwargs)
+        super(QuerySuggentionBox, self).__init__(self.body)
+

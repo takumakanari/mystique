@@ -8,7 +8,7 @@ from mystique.db import Database, Table
 from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
 from mystique.widgets import AppendableColumns, QueryEditor, \
- MouseEvCanceledButton, TableFilter, txt, ftxt
+ MouseEvCanceledButton, TableFilter, QuerySuggentionBox, txt, ftxt
 
 
 palette = [
@@ -96,6 +96,8 @@ class MystiqueView(urwid.Frame):
         self.query_editor = None
         self.table_filter = TableFilter(word_list=self._table_list,
                                         autocompleted=self._do_table_filter)
+        self.query_suggestionbox = QuerySuggentionBox(on_select=\
+                                                     self.focus_to_top)
         self._keypress_handler = self.keypress_default
         self._table_session = None
         self._current_focus_on_tablelist = 0
@@ -197,7 +199,10 @@ class MystiqueView(urwid.Frame):
         return False
 
     def open_query_editor(self, query=None, insert_top=False):
-        self.query_editor = QueryEditor(query=query, attr='editcp')
+        self.query_editor = QueryEditor(query=query, attr='editcp',
+                                        custom_word_list=tuple(self._table_list),
+                                        autocompleted=self._do_autocomplete_query,
+                                        on_tab=self.focus_to_suggestionbox)
         if insert_top:
             self.listbox.body.insert(0, self.query_editor)
         else:
@@ -210,14 +215,26 @@ class MystiqueView(urwid.Frame):
             self.table_filter.body.clear()
         if not self.table_filter_is_shown:
             self.listbox.body.insert(0, self.table_filter)
+        self.table_filter.body.activate()
         self.focus_to_top()
 
     def close_table_filter(self):
         self.table_filter.body.reset()
+        self.table_filter.body.deactivate()
         self.render_table_list()
 
     def _do_table_filter(self, results):
         self.render_table_list()
+
+    def _do_autocomplete_query(self, results):
+        if not results:
+            if self.query_suggestionbox_is_shown:
+                del self.listbox.body[1]
+        else:
+            self.query_suggestionbox.body.query_editor = self.query_editor
+            self.query_suggestionbox.body.update(results)
+            if not self.query_suggestionbox_is_shown:
+                self.listbox.body.insert(1, self.query_suggestionbox)
 
     def keypress_default(self, size, key):
         if self.table_filter_is_shown:
@@ -317,6 +334,10 @@ class MystiqueView(urwid.Frame):
     def focus_to_top(self):
         self.listbox.body.set_focus(0)
 
+    def focus_to_suggestionbox(self):
+        if self.query_suggestionbox_is_shown:
+            self.listbox.body.set_focus(1)
+
     def focus_to_last(self):
         pos = len(self.listbox.body) - 1
         if pos > 0:
@@ -356,6 +377,11 @@ class MystiqueView(urwid.Frame):
     def table_filter_is_shown(self):
         return self.listbox.body and \
             self.listbox.body[0] == self.table_filter
+
+    @property
+    def query_suggestionbox_is_shown(self):
+        return len(self.listbox.body) >= 2 and \
+                self.listbox.body[1] == self.query_suggestionbox
 
 
 def info_of_session(view):
