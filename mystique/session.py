@@ -72,9 +72,6 @@ class TableSession(_Session):
     def default_query(self):
         return 'select * from %s limit %d' % (self.table.name, self.limit)
 
-    # def word_list(self):
-    #     return self.result_desc()
-
     def __str__(self):
         return 'table: %s (%d - %d)' % (self.table.name, self.index_from_1,
                                 self.index_from_1 + self.limit)
@@ -84,29 +81,30 @@ class FreeQuerySession(_Session):
 
     __query_digest_max_len = 80
 
-    def __init__(self, cursor, query):
+    def __init__(self, database, query):
         super(FreeQuerySession, self).__init__()
-        self.cursor = cursor
+        self._database = database
         self.query = query
         self._current_result_desc = None
         logger.info('init session: %s' % self.query)
 
     def get_list(self):
-        self.cursor.execute(self.query)
-        self._current_result_desc = (x[0] for x in self.cursor.description)
+        with self._database.new_cursor() as cursor:
+            cursor.execute(self.query)
+            self._current_result_desc = (x[0] for x in cursor.description)
 
-        idx = 0
-        ret = []
-        for values in self.cursor.fetchall():
-            if idx >= self.offset:
-                ret.append(tuple(value_optimize(v) for v in values))
-                if len(ret) > self.limit: # fetch until limit + 1
-                    break
-            idx += 1
+            idx = 0
+            ret = []
+            for values in cursor.fetchall():
+                if idx >= self.offset:
+                    ret.append(tuple(value_optimize(v) for v in values))
+                    if len(ret) > self.limit: # fetch until limit + 1
+                        break
+                idx += 1
 
-        self._has_next = len(ret) > self.limit
-        if self._has_next:
-            del ret[len(ret) - 1]
+            self._has_next = len(ret) > self.limit
+            if self._has_next:
+                del ret[len(ret) - 1]
 
         return ret
 
@@ -117,9 +115,6 @@ class FreeQuerySession(_Session):
         if self._current_result_desc is None:
             raise Exception('Illegal state, query is not executed in cursor!')
         return self._current_result_desc
-
-    def close(self):
-        self.cursor.close()
 
     def __str__(self):
         dest = ' '.join(self.query.split('\n'))

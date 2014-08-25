@@ -192,7 +192,7 @@ class MystiqueView(urwid.Frame):
     def execute_sql_in_query_editor(self):
         query = self.query_editor.get_query()
         if query:
-            self._session = FreeQuerySession(self._database.cursor, query)
+            self._session = FreeQuerySession(self._database, query)
             if self.render_table_values():
                 self._change_keybinds(self.keypress_in_query_result)
             return True
