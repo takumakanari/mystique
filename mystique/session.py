@@ -88,10 +88,14 @@ class FreeQuerySession(_Session):
         self._current_result_desc = None
         logger.info('init session: %s' % self.query)
 
+    def word_list(self):
+        return self._current_result_desc \
+            if self._current_result_desc is not None else ()
+
     def get_list(self):
         with self._database.new_cursor() as cursor:
             cursor.execute(self.query)
-            self._current_result_desc = (x[0] for x in cursor.description)
+            self._current_result_desc = tuple(x[0] for x in cursor.description)
 
             idx = 0
             ret = []

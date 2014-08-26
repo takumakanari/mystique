@@ -2,15 +2,16 @@
 from __future__ import absolute_import
 import os
 import json
+from mystique import env
 from mystique.log import logger
+
 
 DEFAULT_CONFIG_NAME = 'mystique.config'
 CONFIG_LOAD_DIR = ('.', '/etc/mystique')
-CONFIG_FILE_IN_ENV = os.environ.get('MYSTIQUE_CONFIG')
 
 
 def load_config():
-    path = CONFIG_FILE_IN_ENV
+    path = env.MYSTIQUE_ENV_CONFIG_FILE
     if not path:
         for d in CONFIG_LOAD_DIR:
             path = os.path.join(d, DEFAULT_CONFIG_NAME)

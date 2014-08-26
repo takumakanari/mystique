@@ -1,141 +1,16 @@
-# -*- encoding:utf8 -*-
+#!/usr/bin/env python
+# -*- encoding:utf-8 -*-
 from __future__ import absolute_import
 import urwid
+from mystique.widgets import _AutoComplete
 from mystique.log import logger
-
-
-def txt(v, weight=0, align='left'):
-    d = urwid.Text(v or '', align=align)
-    return d if not weight else ('weight', weight, d)
-
-
-def ftxt(v, s):
-    return ('fixed', s, txt(v))
-
-
-class _OriginalWidgetWrapMixin(object):
-
-    def __getattribute__(self, name):
-        try:
-            return super(_OriginalWidgetWrapMixin,self).__getattribute__(name)
-        except AttributeError:
-            return self.original_widget.__getattribute__(name)
-
-
-def wrap_widget(cls, *args, **kwargs):
-    class _Wrapped(cls, _OriginalWidgetWrapMixin):
-        pass
-    return _Wrapped(*args, **kwargs)
-
-
-class _DummyTxt(urwid.Text):
-
-    def __init__(self):
-        super(_DummyTxt, self).__init__('')
-
-
-class AppendableColumns(urwid.Columns):
-
-    def __init__(self, widget_list):
-        if len(widget_list):
-            super(AppendableColumns, self).__init__(widget_list)
-        else:
-            super(AppendableColumns, self).__init__([_DummyTxt()])
-
-    def optimize_me(self):
-        if len(self.widget_list) and isinstance(self.widget_list[0], _DummyTxt):
-            del self.widget_list[0]
-
-    def replace_me(self, *widget_list):
-        self.widget_list[:] = widget_list
-
-    def clear_me(self):
-        self.widget_list[:] = [_DummyTxt()]
-
-
-class AutoCompoleteEditor(urwid.Edit):
-    pass
-
-
-class MouseEvCanceledButton(urwid.Button):
-    """Skips any mouse event"""
-    def mouse_event(self, size, event, button, x, y, focus):
-        pass
-
-
-class ErrorMessage(urwid.Text):
-
-    def __init__(self, msg):
-        super(ErrorMessage, self).__init__('ERROR! %s' % msg)
-
-
-class _AutoComplete(urwid.Edit):
-
-    def __init__(self, *args, **kwargs):
-        self._word_list = kwargs.get('word_list') or []
-        self._current_list = self._word_list
-        self._autocompleted = kwargs.get('autocompleted')
-        if 'word_list' in kwargs:
-            del kwargs['word_list']
-        if 'autocompleted' in kwargs:
-            del kwargs['autocompleted']
-        super(_AutoComplete, self).__init__(*args, **kwargs)
-        self._last_txt = self.get_edit_text()
-        self._is_active = False
-
-    @property
-    def word_list(self):
-        return self._word_list
-
-    @property
-    def current_list(self):
-        return self._current_list
-
-    def get_edit_text(self, *args, **kwargs):
-        return super(_AutoComplete, self).\
-            get_edit_text(*args, **kwargs).strip()
-
-    def clear(self):
-        self.set_edit_text('')
-
-    def reset(self):
-        self.clear()
-        self._current_list = self._word_list
-
-    def activate(self):
-        self._is_active = True
-
-    def deactivate(self):
-        self._is_active = False
-
-    def is_active(self):
-       return self._is_active
-
-    def keypress(self, size, key):
-        kp = super(_AutoComplete, self).keypress(size, key)
-        if self._autocompleted:
-            txt = self.get_edit_text()
-            if txt != self._last_txt:
-                self._current_list = self.do_filter(txt)
-                self._last_txt = txt
-                self._autocompleted(self._current_list)
-        return kp
-
-    def do_filter(self, val):
-        return filter(lambda x:x.lower().startswith(val.lower()),
-                      self.word_list)
-
-
-class TableFilter(urwid.LineBox):
-
-    def __init__(self, *args, **kwargs):
-        self.body = _AutoComplete(*args, **kwargs)
-        super(TableFilter, self).__init__(self.body)
 
 
 class _QuerySyntaxAutoComplete(_AutoComplete):
 
-    _sql_words = ('absolute', 'action', 'add', 'all', 'allocate',
+    __autocompletable_min_len = 2
+
+    __sql_words = ('absolute', 'action', 'add', 'all', 'allocate',
                   'alter', 'and', 'any', 'are', 'as', 'asc', 'assertion',
                   'at', 'authorization', 'avg', 'begin', 'between', 'bit',
                   'bit_length', 'both', 'by', 'cascade', 'cascaded', 'case',
@@ -173,7 +48,7 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
         else:
             _custom_word_list = ()
         kwargs.update(
-            word_list = self._sql_words + _custom_word_list,
+            word_list = self.__sql_words + _custom_word_list,
             multiline = True
         )
         super(_QuerySyntaxAutoComplete, self).__init__(*args, **kwargs)
@@ -214,42 +89,24 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
 
     def do_filter(self, val):
         possible_word = self.get_possible_word(val)
-        if not possible_word or len(possible_word) < 2:
-            return []
+        if not possible_word or \
+            len(possible_word) < self.__autocompletable_min_len:
+                return []
         possible_word = possible_word.lower()
         logger.debug('possible_word: "%s"' % possible_word)
-        return filter(lambda x:x.lower().startswith(possible_word),
-                      self.word_list)
 
+        def _match(v):
+            vl = v.lower()
+            return vl.startswith(possible_word) and \
+                vl != possible_word
 
-class QueryEditor(urwid.LineBox):
-
-    def __init__(self, query=None, title='SQL', attr='editcp',
-                 custom_word_list=(), autocompleted=None, on_tab=None):
-        editor = _QuerySyntaxAutoComplete('', query or '', autocompleted=autocompleted,
-                                          custom_word_list=custom_word_list)
-        self.body = urwid.AttrWrap(editor, attr)
-        self._on_tab = on_tab
-        super(QueryEditor, self).__init__(self.body, title)
-
-    def get_query(self):
-        return self.optimize_query(self.body.get_edit_text())
-
-    def keypress(self, size, key):
-        if key == 'tab' and self._on_tab:
-            self._on_tab()
-            return
-        return super(QueryEditor, self).keypress(size, key)
-
-    @classmethod
-    def optimize_query(cls, src):
-        return src.strip()
+        return filter(_match, self.word_list)
 
 
 class QuerySuggention(urwid.Columns):
 
-    def __init__(self, words=(), query_editor=None, on_select=None):
-        self.query_editor = query_editor
+    def __init__(self, words=(), editor=None, on_select=None):
+        self._editor = editor
         self._on_select = on_select
         self.update(words or [''])
 
@@ -265,10 +122,10 @@ class QuerySuggention(urwid.Columns):
             else:
                 self.set_focus(0)
         elif key == 'enter':
-            if self.query_editor:
+            if self._editor:
                 t = self.widget_list[self.focus_position].get_text()[0]
-                logger.debug('"%s" => %s' % (t, self.query_editor))
-                self.query_editor.body.insert(t)
+                logger.debug('"%s" => %s' % (t, self._editor))
+                self._editor.insert(t)
                 if self._on_select:
                     self._on_select()
         return super(QuerySuggention, self).keypress(size, key)
@@ -281,9 +138,49 @@ class QuerySuggention(urwid.Columns):
         return tuple(('fixed', len(x), _s(x)) for x in words)
 
 
-class QuerySuggentionBox(urwid.LineBox):
+class QueryEditor(urwid.Pile):
 
-    def __init__(self, *args, **kwargs):
-        self.body = QuerySuggention(*args, **kwargs)
-        super(QuerySuggentionBox, self).__init__(self.body)
+    def __init__(self, query=None, custom_word_list=()):
+        editor = _QuerySyntaxAutoComplete('', query or '',
+                                          autocompleted=self._autocompleted,
+                                          custom_word_list=custom_word_list)
+        qs = QuerySuggention(editor=editor, on_select=self.focus_to_top)
+        self._editor = urwid.LineBox(urwid.AttrWrap(editor, 'editcp'), 'SQL')
+        self._suggestionbox = urwid.LineBox(qs)
+        super(QueryEditor, self).__init__([self._editor])
+
+    def get_query(self):
+        ow = self._editor.original_widget
+        return self.optimize_query(ow.get_edit_text())
+
+    def keypress(self, size, key):
+        if key == 'tab' and self.suggestbox_is_shown and \
+            self.focus_position == 0:
+                self.focus_to_suggestionbox()
+                return
+        return super(QueryEditor, self).keypress(size, key)
+
+    def focus_to_top(self):
+        self.set_focus(0)
+
+    def focus_to_suggestionbox(self):
+        if self.suggestbox_is_shown:
+            self.set_focus(1)
+
+    @property
+    def suggestbox_is_shown(self):
+        return len(self.widget_list) >= 2
+
+    def _autocompleted(self, results):
+        if not results:
+            if self.suggestbox_is_shown:
+                del self.widget_list[1]
+        else:
+            self._suggestionbox.original_widget.update(results)
+            if not self.suggestbox_is_shown:
+                self.widget_list.append(self._suggestionbox)
+
+    @classmethod
+    def optimize_query(cls, src):
+        return src.strip()
 
