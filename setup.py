@@ -1,8 +1,9 @@
 from setuptools import setup, find_packages
+import mystique
 
 setup(
-    name = 'mystique',
-    version = '0.0.1',
+    name = mystique.__mystique__,
+    version = mystique.__version__,
     packages = find_packages(
         '.', 
         exclude = [
@@ -12,7 +13,7 @@ setup(
     package_dir = {
         '' : '.'
     },
-    author = 'takumakanari',
+    author = mystique.__author__,
     author_email = 'chemtrails.t@gmail.com',
     maintainer = 'takumakanari',
     maintainer_email = 'chemtrails@gmail.com',
@@ -34,6 +35,8 @@ setup(
         'urwid',
         'blinker'
     ],
+    license = 'BSD',
+    keywords = 'mysql terminal gui utilities mystique database db',
     zip_safe = False,
     include_package_data = True,
     entry_points="""
