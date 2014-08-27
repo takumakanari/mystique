@@ -56,6 +56,9 @@ class TableSession(_Session):
         self.table = table
         super(TableSession, self).__init__()
 
+    def word_list(self):
+        return tuple(self.result_desc())
+
     def get_list(self):
         ret = self.table.simple_list(offset=self.offset, limit=self.limit+1)
         self._has_next = len(ret) > self.limit
