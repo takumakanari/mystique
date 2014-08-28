@@ -55,12 +55,15 @@ class TableSession(_Session):
     def __init__(self, table):
         self.table = table
         super(TableSession, self).__init__()
+        self._result_size = 0
 
     def get_list(self):
         ret = self.table.simple_list(offset=self.offset, limit=self.limit+1)
-        self._has_next = len(ret) > self.limit
+        self._result_size = len(ret)
+        self._has_next = self._result_size > self.limit
         if self._has_next:
-            del ret[len(ret) - 1]
+            del ret[self._result_size - 1]
+            self._result_size -= 1
         return ret
 
     def result_desc(self):
@@ -73,8 +76,12 @@ class TableSession(_Session):
         return 'select * from %s limit %d' % (self.table.name, self.limit)
 
     def __str__(self):
-        return 'table: %s (%d - %d)' % (self.table.name, self.index_from_1,
-                                self.index_from_1 + self.limit)
+        if self._result_size:
+            return 'table: %s (%d - %d)' % \
+                (self.table.name, self.index_from_1,
+                 self.index_from_1 + self._result_size - 1)
+        else:
+            return 'table: %s (empty)' % (self.table.name)
 
 
 class FreeQuerySession(_Session):

@@ -85,6 +85,8 @@ class Events(object):
 
 class MystiqueView(urwid.Frame):
 
+    __max_width_each_column = 30
+
     def __init__(self, conf):
         self._config = conf
         self._database = Database(**conf['database'])
@@ -159,17 +161,24 @@ class MystiqueView(urwid.Frame):
             self.render_error('%d: %s' % (e[0] or 0, e[1]))
             return False
 
-        result_desc = self._session.result_desc()
+        result_desc = tuple(self._session.result_desc())
         idx_col_len = len(str(len(result_list) + self._session.offset))
 
-        names = (ftxt('', idx_col_len),) + tuple(txt(x) for x in result_desc)
-        header = urwid.AttrWrap(urwid.Columns(names, dividechars=1), 'col_head')
+        sizemap = self._update_sizemap(result_desc, {},
+                                       self.__max_width_each_column)
+        for values in result_list:
+            self._update_sizemap(values, sizemap, self.__max_width_each_column)
+
+        names = (ftxt('', idx_col_len),) + \
+            tuple(ftxt(x, sizemap[i]) for i, x in enumerate(result_desc))
+        header = urwid.AttrWrap(urwid.Columns(names, dividechars=2), 'col_head')
         self.clear_listbox(body=[header])
 
         for c, values in enumerate(result_list):
             index_str = str(c + 1 + self._session.offset)
-            line = (ftxt(index_str, idx_col_len),) + tuple(txt(v) for v in values)
-            self.listbox.body.append(urwid.Columns(line, dividechars=1))
+            line = (ftxt(index_str, idx_col_len),) + \
+                tuple(ftxt(v, sizemap[i]) for i, v in enumerate(values))
+            self.listbox.body.append(urwid.Columns(line, dividechars=2))
 
         Events.table_values_rendered.send(self)
 
@@ -349,6 +358,16 @@ class MystiqueView(urwid.Frame):
         self._keypress_handler = handle_func
         Events.keybind_changed.send(view=self, name=handle_func.__name__)
         logger.info('keypress handler is updated: %s' % handle_func.__name__)
+
+    @classmethod
+    def _update_sizemap(cls, base_list, sizemap, max_len):
+        for i, val in enumerate(base_list):
+            size = len(val)
+            if size > max_len:
+                size = max_len
+            if not sizemap.has_key(i) or sizemap[i] < size:
+                sizemap[i] = size
+        return sizemap
 
     @property
     def session(self):
