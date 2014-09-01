@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from mystique.log import logger
 from mystique.db import value_optimize
+import os
 
 
 class _Session(object):
@@ -128,7 +129,7 @@ class FreeQuerySession(_Session):
         return self._current_result_desc
 
     def __str__(self):
-        dest = ' '.join(self.query.split('\n'))
+        dest = ' '.join(self.query.split(os.linesep))
         if len(dest) <= self.__query_digest_max_len:
             return dest
         return '%s ...' % (dest[:self.__query_digest_max_len])
