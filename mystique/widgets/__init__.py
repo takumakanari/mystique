@@ -63,11 +63,7 @@ class AppendableColumns(urwid.Columns):
         self.widget_list[:] = [_DummyTxt()]
 
 
-class AutoCompoleteEditor(urwid.Edit):
-    pass
-
-
-class MouseEvCanceledButton(urwid.Button):
+class StupidButton(urwid.Button):
     """Skips any mouse event"""
     def mouse_event(self, size, event, button, x, y, focus):
         pass

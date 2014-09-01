@@ -7,7 +7,7 @@ from mystique import config
 from mystique.db import Database, Table
 from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
-from mystique.widgets import AppendableColumns, MouseEvCanceledButton, \
+from mystique.widgets import AppendableColumns, StupidButton, \
 TableFilter, TableColumn, txt, ftxt, fstxt, get_original_widget
 from mystique.widgets.queryeditor import QueryEditor
 
@@ -118,35 +118,33 @@ class MystiqueView(urwid.Frame):
     def db_name(self):
         return self._database.config('db')
 
+    def _start_table_session(self, table):
+        self._current_focus_on_tablelist = self.listbox.focus_position
+        logger.info('table=[%s] is choosen (focus: %d)' %
+                    (table, self._current_focus_on_tablelist))
+        self._session = TableSession(self._database.get_table(table))
+        if self.render_table_values():
+            self._change_keybinds(self.keypress_in_table_session)
+        Events.table_values_rendered.send(self)
+
     def render_table_list(self):
         self._session = None
         self._change_keybinds(self.keypress_default)
-
-        def button_press(b):
-            table = b.get_label()
-            self._current_focus_on_tablelist = self.listbox.focus_position
-            logger.info('table=[%s] is choosen (focus: %d)' %
-                        (table, self._current_focus_on_tablelist))
-
-            self._session = TableSession(self._database.get_table(table))
-            if self.render_table_values():
-                self._change_keybinds(self.keypress_in_table_session)
-
-            Events.table_values_rendered.send(self)
-
         self.clear_listbox()
 
-        if not self.table_filter_is_shown and self.table_filter.body.is_active():
-            self.open_table_filter(clear=False) # re-show table filter
+        if not self.table_filter_is_shown and \
+            self.table_filter.body.is_active():
+                self.open_table_filter(clear=False) # re-show table filter
 
         tables = self.table_filter.body.current_list
         if tables:
-            min_len = max(len(x) for x in tables)
+            max_len = max(len(x) for x in tables)
+            new_session = lambda b:self._start_table_session(b.get_label())
             for t in tables:
-                btn = urwid.AttrWrap(MouseEvCanceledButton(t, button_press),
+                btn = urwid.AttrWrap(StupidButton(t, new_session),
                                     'button', 'buttnf')
-                btn = urwid.Padding(btn, align='left', min_width=min_len,
-                                    width=('relative', min_len))
+                btn = urwid.Padding(btn, align='left',
+                                    width=('relative', max_len))
                 self.listbox.body.append(btn)
             self.listbox.body.set_focus(self._current_focus_on_tablelist)
             self._current_focus_on_tablelist = 0
