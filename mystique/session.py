@@ -110,7 +110,7 @@ class FreeQuerySession(_Session):
 
             idx = 0
             ret = []
-            for values in cursor.fetchall():
+            for values in iter(cursor):
                 if idx >= self.offset:
                     ret.append(tuple(value_optimize(v) for v in values))
                     if len(ret) > self.limit: # fetch until limit + 1
