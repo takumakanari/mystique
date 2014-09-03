@@ -14,10 +14,9 @@ def value_optimize(v):
     return v
 
 
-class _ConnectableMixin(object):
+class _Connectable(object):
 
-    """ must be called this function first """
-    def set_config(self, config):
+    def __init__(self, config):
         self._config = config
 
     @contextmanager
@@ -27,12 +26,12 @@ class _ConnectableMixin(object):
                 yield cursor
 
 
-class Database(_ConnectableMixin):
+class Database(_Connectable):
 
     def __init__(self, **config):
         logger.info('[DB] config: %s' % str(config))
         self._config = config
-        self.set_config(self._config)
+        super(Database, self).__init__(self._config)
 
     def config(self, name):
         return self._config[name]
@@ -58,10 +57,10 @@ class Database(_ConnectableMixin):
                                 self.config('port'), self.config('db'))
 
 
-class Table(_ConnectableMixin):
+class Table(_Connectable):
 
     def __init__(self, config, name):
-        self.set_config(config)
+        super(Table, self).__init__(config)
         self.name = name
         self._desc = None
 
