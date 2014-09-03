@@ -38,8 +38,8 @@ _kb_quit_on_q = (
 )
 
 _kb_lr_pager = (
-    ('j', 'Next'),
-    ('k', 'Prev')
+    ('k', 'Next'),
+    ('j', 'Prev')
 )
 
 keybinds = {
@@ -316,10 +316,10 @@ class MystiqueView(urwid.Frame):
         if exit_on_q and key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
         if lr_pager:
-            if key == 'j' and self._session.has_next:
+            if key == 'k' and self._session.has_next:
                 self._session.next_page()
                 self.render_table_values()
-            elif key == 'k' and self._session.has_prev():
+            elif key == 'j' and self._session.has_prev():
                 self._session.prev_page()
                 self.render_table_values()
         if scrollable:
