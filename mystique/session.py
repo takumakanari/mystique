@@ -70,6 +70,9 @@ class TableSession(_Session):
             self._result_size -= 1
         return ret
 
+    def word_list(self):
+        return tuple(self.result_desc())
+
     def result_desc(self):
         return (x['name'] for x in self.table.desc)
 
