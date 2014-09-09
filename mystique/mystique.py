@@ -109,7 +109,8 @@ class MystiqueView(urwid.Frame):
         super(MystiqueView, self).__init__(
             self.listbox,
             header = urwid.AttrWrap(urwid.Columns([
-                urwid.Pile([self.information_text1, self.information_text2]),
+                self.information_text1,
+                self.information_text2,
                 urwid.Text(HEADER_DEFAULT, align='right'),
             ]), 'header'),
             footer = urwid.AttrWrap(self.footer_columns, 'footer')
@@ -413,11 +414,11 @@ def info_of_table_desc(view):
 
 
 def info_of_table_list(view):
-    view.update_information('%s tables' % view.db_name)
+    view.update_information('%s.Tables' % view.db_name)
 
 
 def info_of_query_editor(view):
-    view.update_information('query for %s' % view.db_name)
+    view.update_information('%s.Query' % view.db_name)
 
 
 def keybind_information_in_footer(*args, **kwargs):

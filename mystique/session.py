@@ -84,11 +84,11 @@ class TableSession(_Session):
 
     def __str__(self):
         if self._result_size:
-            return 'table: %s (%d - %d)' % \
+            return '%s:%d-%d' % \
                 (self.table.name, self.index_from_1,
                  self.index_from_1 + self._result_size - 1)
         else:
-            return 'table: %s (empty)' % (self.table.name)
+            return '%s:empty' % (self.table.name)
 
 
 class FreeQuerySession(_Session):
