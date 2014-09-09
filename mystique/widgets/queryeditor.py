@@ -6,6 +6,17 @@ from mystique.widgets import _AutoComplete
 from mystique.log import logger
 
 
+class AcWordTypes(object):
+    other = 0
+    sql_reserved_word = 1
+    table = 2
+    column = 3
+
+
+def with_word_type(words, word_type):
+    return tuple(((x, word_type) for x in words))
+
+
 class _QuerySyntaxAutoComplete(_AutoComplete):
 
     __autocompletable_min_len = 2
@@ -48,7 +59,9 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
         else:
             _custom_word_list = ()
         kwargs.update(
-            word_list = self.__sql_words + _custom_word_list,
+            word_list = with_word_type(self.__sql_words,
+                                      AcWordTypes.sql_reserved_word) + \
+                                      _custom_word_list,
             multiline = True
         )
         super(_QuerySyntaxAutoComplete, self).__init__(*args, **kwargs)
@@ -96,7 +109,10 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
         logger.debug('possible_word: "%s"' % possible_word)
 
         def _match(v):
-            vl = v.lower()
+            if type(v) in (list, tuple):
+                vl = v[0].lower()
+            else:
+                vl = v.lower()
             return vl.startswith(possible_word) and \
                 vl != possible_word
 
@@ -133,9 +149,15 @@ class QuerySuggention(urwid.Columns):
     @classmethod
     def _make_data(cls, words):
         def _s(x):
-            return urwid.AttrWrap(urwid.SelectableIcon(x, 0),
-                                 'button', 'buttnf')
-        return tuple(('fixed', len(x), _s(x)) for x in words)
+            if type(x) in (tuple, list):
+                v, word_type = x # {AcWordTypes}
+            else:
+                v = x
+                word_type = ''
+            w = urwid.AttrWrap(urwid.SelectableIcon(v, 0),
+                              'buttn-%s' % word_type, 'buttnf')
+            return ('fixed', len(v), w)
+        return tuple(_s(x) for x in words)
 
 
 class QueryEditor(urwid.Pile):

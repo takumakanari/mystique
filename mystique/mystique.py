@@ -9,20 +9,23 @@ from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
 from mystique.widgets import AppendableColumns, StupidButton, \
 TableFilter, TableColumn, txt, ftxt, fstxt, get_original_widget
-from mystique.widgets.queryeditor import QueryEditor
+from mystique.widgets.queryeditor import QueryEditor, with_word_type, AcWordTypes
 
 
 palette = [
     # name, foreground color, background color
     ('body','black','light gray', 'standout'),
     ('reverse','light gray','black'),
-    ('header','light red','dark blue', 'bold'),
+    ('header','dark red','dark blue', 'bold'),
     ('footer','light gray','black',),
     ('editcp','white','black'),
     ('bright','dark gray','light gray', ('bold','standout')),
-    ('buttn','black','dark cyan'),
+    ('buttn','white','black'),
+    ('buttn-1','light cyan','black'),
+    ('buttn-2','dark red','black'),
+    ('buttn-3','dark green','black'),
     ('buttnf','dark blue','yellow','bold'),
-    ('col_head', 'dark green', 'black', 'bold'),
+    ('col_head', 'light green', 'black', 'bold'),
     ('error_message','light red','white'),
     ('kb_desc_cmd', 'yellow', 'dark blue')
 ]
@@ -142,7 +145,7 @@ class MystiqueView(urwid.Frame):
             new_session = lambda b:self._start_table_session(b.get_label())
             for t in tables:
                 btn = urwid.AttrWrap(StupidButton(t, new_session),
-                                    'button', 'buttnf')
+                                    'buttn', 'buttnf')
                 btn = urwid.Padding(btn, align='left',
                                     width=('relative', max_len))
                 self.listbox.body.append(btn)
@@ -205,9 +208,10 @@ class MystiqueView(urwid.Frame):
         return False
 
     def open_query_editor(self, query=None, insert_top=False):
-        wordlist = tuple(self._table_list)
+        wordlist = with_word_type(self._table_list, AcWordTypes.table)
         if self.session is not None:
-            wordlist += self.session.word_list()
+            wordlist += with_word_type(self.session.word_list(),
+                                         AcWordTypes.column)
         self.query_editor = QueryEditor(query=query, custom_word_list=wordlist)
         if insert_top:
             self.listbox.body.insert(0, self.query_editor)
