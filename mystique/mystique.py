@@ -16,7 +16,7 @@ palette = [
     # name, foreground color, background color
     ('body','black','light gray', 'standout'),
     ('reverse','light gray','black'),
-    ('header','dark red','dark blue', 'bold'),
+    ('header','light red','dark blue', 'bold'),
     ('footer','light gray','black',),
     ('editcp','white','black'),
     ('bright','dark gray','light gray', ('bold','standout')),
