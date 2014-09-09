@@ -13,6 +13,16 @@ def ftxt(v, s):
     return ('fixed', s, txt(v))
 
 
+def fstxt(val, size):
+    s = urwid.SelectableIcon(val, 0)
+    return ('fixed', size, s)
+
+
+def get_original_widget(src):
+    return src.original_widget \
+        if isinstance(src, urwid.AttrWrap) else src
+
+
 class _OriginalWidgetWrapMixin(object):
 
     def __getattribute__(self, name):
@@ -131,4 +141,10 @@ class TableFilter(urwid.LineBox):
     def __init__(self, *args, **kwargs):
         self.body = _AutoComplete(*args, **kwargs)
         super(TableFilter, self).__init__(self.body)
+
+
+class TableColumn(urwid.Columns):
+
+    def __init__(self, widget_list):
+        super(TableColumn, self).__init__(widget_list, dividechars=2)
 

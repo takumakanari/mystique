@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from mystique.log import logger
 from mystique.db import value_optimize
+import os
 
 
 class _Session(object):
@@ -55,15 +56,18 @@ class TableSession(_Session):
     def __init__(self, table):
         self.table = table
         super(TableSession, self).__init__()
+        self._result_size = 0
 
     def word_list(self):
         return tuple(self.result_desc())
 
     def get_list(self):
         ret = self.table.simple_list(offset=self.offset, limit=self.limit+1)
-        self._has_next = len(ret) > self.limit
+        self._result_size = len(ret)
+        self._has_next = self._result_size > self.limit
         if self._has_next:
-            del ret[len(ret) - 1]
+            del ret[self._result_size - 1]
+            self._result_size -= 1
         return ret
 
     def result_desc(self):
@@ -76,8 +80,12 @@ class TableSession(_Session):
         return 'select * from %s limit %d' % (self.table.name, self.limit)
 
     def __str__(self):
-        return 'table: %s (%d - %d)' % (self.table.name, self.index_from_1,
-                                self.index_from_1 + self.limit)
+        if self._result_size:
+            return 'table: %s (%d - %d)' % \
+                (self.table.name, self.index_from_1,
+                 self.index_from_1 + self._result_size - 1)
+        else:
+            return 'table: %s (empty)' % (self.table.name)
 
 
 class FreeQuerySession(_Session):
@@ -124,7 +132,7 @@ class FreeQuerySession(_Session):
         return self._current_result_desc
 
     def __str__(self):
-        dest = ' '.join(self.query.split('\n'))
+        dest = ' '.join(self.query.split(os.linesep))
         if len(dest) <= self.__query_digest_max_len:
             return dest
         return '%s ...' % (dest[:self.__query_digest_max_len])

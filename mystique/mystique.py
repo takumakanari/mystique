@@ -8,7 +8,7 @@ from mystique.db import Database, Table
 from mystique.session import TableSession, FreeQuerySession
 from mystique.log import logger
 from mystique.widgets import AppendableColumns, MouseEvCanceledButton, \
-TableFilter, txt, ftxt
+TableFilter, TableColumn, txt, ftxt, fstxt, get_original_widget
 from mystique.widgets.queryeditor import QueryEditor
 
 
@@ -38,8 +38,8 @@ _kb_quit_on_q = (
 )
 
 _kb_lr_pager = (
-    ('right', 'Next'),
-    ('left', 'Prev')
+    ('j', 'Next'),
+    ('k', 'Prev')
 )
 
 keybinds = {
@@ -84,6 +84,8 @@ class Events(object):
 
 
 class MystiqueView(urwid.Frame):
+
+    __max_width_each_column = 30
 
     def __init__(self, conf):
         self._config = conf
@@ -159,17 +161,24 @@ class MystiqueView(urwid.Frame):
             self.render_error('%d: %s' % (e[0] or 0, e[1]))
             return False
 
-        result_desc = self._session.result_desc()
+        result_desc = tuple(self._session.result_desc())
         idx_col_len = len(str(len(result_list) + self._session.offset))
 
-        names = (ftxt('', idx_col_len),) + tuple(txt(x) for x in result_desc)
-        header = urwid.AttrWrap(urwid.Columns(names, dividechars=1), 'col_head')
+        sizemap = self._update_sizemap(result_desc, {},
+                                       self.__max_width_each_column)
+        for values in result_list:
+            self._update_sizemap(values, sizemap, self.__max_width_each_column)
+
+        names = (ftxt('', idx_col_len),) + \
+            tuple(fstxt(x, sizemap[i]) for i, x in enumerate(result_desc))
+        header = urwid.AttrWrap(TableColumn(names), 'col_head')
         self.clear_listbox(body=[header])
 
         for c, values in enumerate(result_list):
             index_str = str(c + 1 + self._session.offset)
-            line = (ftxt(index_str, idx_col_len),) + tuple(txt(v) for v in values)
-            self.listbox.body.append(urwid.Columns(line, dividechars=1))
+            line = (ftxt(index_str, idx_col_len),) + \
+                tuple(fstxt(v, sizemap[i]) for i, v in enumerate(values))
+            self.listbox.body.append(TableColumn(line))
 
         Events.table_values_rendered.send(self)
 
@@ -251,7 +260,7 @@ class MystiqueView(urwid.Frame):
                 Events.table_values_rendered.send(self)
             elif key == 'ctrl x':
                 self.execute_sql_in_query_editor()
-            return self._common_keypresses(size, key)
+            return self._common_keypresses(size, key, scrollable=True)
         if key in ('q', 'Q'):
             self.render_table_list()
             self._change_keybinds(self.keypress_default)
@@ -262,7 +271,7 @@ class MystiqueView(urwid.Frame):
             self.open_query_editor(query=self.session.default_query(),
                                    insert_top=True)
             return
-        return self._common_keypresses(size, key,
+        return self._common_keypresses(size, key, scrollable=True,
                                        focus_on_g=True, lr_pager=True)
 
     def keypress_in_table_desc(self, size, key):
@@ -289,18 +298,18 @@ class MystiqueView(urwid.Frame):
             elif key == 'ctrl x':
                 self.execute_sql_in_query_editor()
                 Events.table_values_rendered.send(self)
-            return self._common_keypresses(size, key)
+            return self._common_keypresses(size, key, scrollable=True)
         if key == 'x':
             self.open_query_editor(query=self.session.default_query(),
                                    insert_top=True)
             return
         elif key == 'q':
             self.render_table_list()
-        return self._common_keypresses(size, key,
+        return self._common_keypresses(size, key, scrollable=True,
                                        focus_on_g=True, lr_pager=True)
 
     def _common_keypresses(self, size, key, focus_on_g=False, exit_on_q=False,
-                           lr_pager=False):
+                           lr_pager=False, scrollable=False):
         if focus_on_g:
             if key == 'g':
                 self.focus_to_top()
@@ -309,12 +318,31 @@ class MystiqueView(urwid.Frame):
         if exit_on_q and key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
         if lr_pager:
-            if key == 'right' and self._session.has_next:
+            if key == 'j' and self._session.has_next:
                 self._session.next_page()
                 self.render_table_values()
-            elif key == 'left' and self._session.has_prev():
+            elif key == 'k' and self._session.has_prev():
                 self._session.prev_page()
                 self.render_table_values()
+        if scrollable:
+            if key in ('right', 'left'):
+                ret = super(MystiqueView, self).keypress(size, key)
+
+                focus_pos = self.listbox.focus_position
+                fw = self.listbox.body[focus_pos]
+                ow = get_original_widget(fw)
+
+                if not isinstance(ow, TableColumn):
+                    return ret
+
+                focus = ow.get_focus_column()
+                if focus > 1: # pos=0 is always urwid.Text (unfocusable)
+                    for i, b in enumerate(self.listbox.body):
+                        if i != focus_pos and \
+                            isinstance(get_original_widget(b), TableColumn):
+                                b.set_focus_column(focus)
+                return ret
+
         return super(MystiqueView, self).keypress(size, key)
 
     def keypress(self, size, key):
@@ -349,6 +377,16 @@ class MystiqueView(urwid.Frame):
         self._keypress_handler = handle_func
         Events.keybind_changed.send(view=self, name=handle_func.__name__)
         logger.info('keypress handler is updated: %s' % handle_func.__name__)
+
+    @classmethod
+    def _update_sizemap(cls, base_list, sizemap, max_len):
+        for i, val in enumerate(base_list):
+            size = len(val)
+            if size > max_len:
+                size = max_len
+            if not sizemap.has_key(i) or sizemap[i] < size:
+                sizemap[i] = size
+        return sizemap
 
     @property
     def session(self):
