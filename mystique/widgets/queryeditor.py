@@ -9,8 +9,8 @@ from mystique.log import logger
 class AcWordTypes(object):
     other = 0
     sql_reserved_word = 1
-    table = 2
-    column = 3
+    column = 2
+    table = 3
 
 
 def with_word_type(words, word_type):
@@ -26,31 +26,43 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
                   'at', 'authorization', 'avg', 'begin', 'between', 'bit',
                   'bit_length', 'both', 'by', 'cascade', 'cascaded', 'case',
                   'cast', 'catalog', 'char', 'character', 'character_length',
-                  'char_length', 'check', 'close', 'coalesce', 'collate', 'collation',
-                  'column', 'commit', 'connect', 'connection', 'constraint', 'constraints',
-                  'continue', 'convert', 'corresponding', 'create', 'cross', 'current',
-                  'current_date', 'current_time', 'current_timestamp', 'current_user',
-                  'cursor', 'date', 'day', 'deallocate', 'dec', 'decimal', 'declare',
-                  'default', 'deferrable', 'deferred', 'delete', 'desc', 'describe',
-                  'descriptor', 'diagnostics', 'disconnect', 'distinct', 'domain', 'double',
-                  'drop', 'else', 'end', 'end-exec', 'escape', 'except', 'exception', 'exec',
-                  'execute', 'exists', 'external', 'extract', 'false', 'fetch', 'first', 'float',
-                  'for', 'foreign', 'found', 'from', 'full', 'get', 'global', 'go', 'goto',
-                  'grant', 'group', 'having', 'hour', 'identity', 'immediate', 'in', 'indicator',
-                  'initially', 'inner', 'input', 'insensitive', 'insert', 'int', 'integer', 'intersect',
-                  'interval', 'into', 'is', 'isolation', 'join', 'key', 'language', 'last', 'leading',
-                  'left', 'level', 'like', 'local', 'lower', 'match', 'max', 'min', 'minute', 'module',
-                  'month', 'names', 'national', 'natural', 'nchar', 'next', 'no', 'not', 'null', 'nullif',
-                  'numeric', 'octet_length', 'of', 'on', 'only', 'open', 'option', 'or', 'order', 'outer',
-                  'output', 'overlaps', 'pad', 'partial', 'position', 'precision', 'prepare', 'preserve',
-                  'primary', 'prior', 'privileges', 'procedure', 'public', 'read', 'real', 'references',
-                  'relative', 'restrict', 'revoke', 'right', 'rollback', 'rows', 'schema', 'scroll', 'second',
-                  'section', 'select', 'session', 'session_user', 'set', 'size', 'smallint', 'some', 'space',
-                  'sql', 'sqlcode', 'sqlerror', 'sqlstate', 'substring', 'sum', 'system_user', 'table', 'temporary',
-                  'then', 'time', 'timestamp', 'timezone_hour', 'timezone_minute', 'to', 'trailing', 'transaction',
-                  'translate', 'translation', 'trim', 'true', 'union', 'unique', 'unknown', 'update', 'upper', 'usage',
-                  'user', 'using', 'value', 'values', 'varchar', 'varying', 'view', 'when', 'whenever', 'where', 'with',
-                  'work', 'write', 'year', 'zone', 'count', 'count(*)', 'group by', 'order by')
+                  'char_length', 'check', 'close', 'coalesce', 'collate',
+                  'collation', 'column', 'commit', 'connect', 'connection',
+                  'constraint', 'constraints', 'continue', 'convert',
+                  'corresponding', 'create', 'cross', 'current',
+                  'current_date', 'current_time', 'current_timestamp',
+                  'current_user', 'cursor', 'date', 'day', 'deallocate', 'dec',
+                  'decimal', 'declare', 'default', 'deferrable', 'deferred',
+                  'delete', 'desc', 'describe', 'descriptor', 'diagnostics',
+                  'disconnect', 'distinct', 'domain', 'double', 'drop', 'else',
+                  'end', 'end-exec', 'escape', 'except', 'exception', 'exec',
+                  'execute', 'exists', 'external', 'extract', 'false', 'fetch',
+                  'first', 'float', 'for', 'foreign', 'found', 'from', 'full',
+                  'get', 'global', 'go', 'goto', 'grant', 'group', 'having',
+                  'hour', 'identity', 'immediate', 'in', 'indicator',
+                  'initially', 'inner', 'input', 'insensitive', 'insert',
+                  'int', 'integer', 'intersect', 'interval', 'into', 'is',
+                  'isolation', 'join', 'key', 'language', 'last', 'leading',
+                  'left', 'level', 'like', 'local', 'lower', 'match', 'max',
+                  'min', 'minute', 'module', 'month', 'names', 'national',
+                  'natural', 'nchar', 'next', 'no', 'not', 'null', 'nullif',
+                  'numeric', 'octet_length', 'of', 'on', 'only', 'open',
+                  'option', 'or', 'order', 'outer', 'output', 'overlaps',
+                  'preserve','pad', 'partial', 'position', 'precision',
+                  'prepare', 'primary', 'prior', 'privileges', 'procedure',
+                  'public', 'read', 'real', 'references', 'relative',
+                  'restrict', 'revoke', 'right', 'rollback', 'rows', 'schema',
+                  'scroll', 'second', 'section', 'select', 'session',
+                  'session_user', 'set', 'size', 'smallint', 'some', 'space',
+                  'sql', 'sqlcode', 'sqlerror', 'sqlstate', 'substring', 'sum',
+                  'system_user', 'table', 'temporary','then', 'time',
+                  'timestamp', 'timezone_hour', 'timezone_minute', 'to',
+                  'trailing', 'transaction', 'translate', 'translation',
+                  'trim', 'true', 'union', 'unique', 'unknown', 'update',
+                  'upper', 'usage', 'user', 'using', 'value', 'values',
+                  'varchar', 'varying', 'view', 'when', 'whenever', 'where',
+                  'with', 'work', 'write', 'year', 'zone', 'count', 'count(*)',
+                  'group by', 'order by')
 
     def __init__(self, *args, **kwargs):
         if 'custom_word_list' in kwargs:
@@ -58,10 +70,11 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
             del kwargs['custom_word_list']
         else:
             _custom_word_list = ()
+        word_list = with_word_type(self.__sql_words,
+                                  AcWordTypes.sql_reserved_word) + \
+                                  _custom_word_list
         kwargs.update(
-            word_list = with_word_type(self.__sql_words,
-                                      AcWordTypes.sql_reserved_word) + \
-                                      _custom_word_list,
+            word_list = sorted(word_list, key=lambda x:x[1]),
             multiline = True
         )
         super(_QuerySyntaxAutoComplete, self).__init__(*args, **kwargs)
@@ -109,10 +122,7 @@ class _QuerySyntaxAutoComplete(_AutoComplete):
         logger.debug('possible_word: "%s"' % possible_word)
 
         def _match(v):
-            if type(v) in (list, tuple):
-                vl = v[0].lower()
-            else:
-                vl = v.lower()
+            vl = v[0].lower()
             return vl.startswith(possible_word) and \
                 vl != possible_word
 
@@ -124,7 +134,7 @@ class QuerySuggention(urwid.Columns):
     def __init__(self, words=(), editor=None, on_select=None):
         self._editor = editor
         self._on_select = on_select
-        self.update(words or [''])
+        self.update(words or [('', AcWordTypes.other)])
 
     def update(self, words):
         super(QuerySuggention, self).__init__(self._make_data(words),
@@ -149,11 +159,7 @@ class QuerySuggention(urwid.Columns):
     @classmethod
     def _make_data(cls, words):
         def _s(x):
-            if type(x) in (tuple, list):
-                v, word_type = x # {AcWordTypes}
-            else:
-                v = x
-                word_type = ''
+            v, word_type = x # {AcWordTypes}
             w = urwid.AttrWrap(urwid.SelectableIcon(v, 0),
                               'buttn-%s' % word_type, 'buttnf')
             return ('fixed', len(v), w)
