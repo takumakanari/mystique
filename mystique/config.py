@@ -10,8 +10,9 @@ DEFAULT_CONFIG_NAME = 'mystique.config'
 CONFIG_LOAD_DIR = ('.', '/etc/mystique')
 
 
-def load_config():
+def load_config(opts=None):
     path = env.MYSTIQUE_ENV_CONFIG_FILE
+
     if not path:
         for d in CONFIG_LOAD_DIR:
             path = os.path.join(d, DEFAULT_CONFIG_NAME)
@@ -20,5 +21,20 @@ def load_config():
     if not path:
         raise Exception('Can not load mystique.config in %s' % str(CONFIG_LOAD_DIR))
     logger.info('config load from %s' % path)
-    return json.load(open(path))
+
+    config = json.load(open(path))
+
+    if opts:
+        if opts.db:
+            config['database']['db'] = opts.db
+        if opts.host:
+            config['database']['host'] = opts.host
+        if opts.port:
+            config['database']['port'] = opts.port
+        if opts.user:
+            config['database']['user'] = opts.user
+        if opts.passwd:
+            config['database']['passwd'] = opts.passwd
+
+    return config
 

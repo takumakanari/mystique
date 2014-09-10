@@ -428,12 +428,23 @@ def keybind_information_in_footer(*args, **kwargs):
 
 def main():
     logger.debug('Bootup mystique...')
+
+    import argparse
+    parser = argparse.ArgumentParser(description='Options for mystique')
+    parser.add_argument('--db', type=str, help='The database name')
+    parser.add_argument('--host', type=str, help='The database host')
+    parser.add_argument('--port', type=int, help='The database port')
+    parser.add_argument('--user', type=str, help='The database user name')
+    parser.add_argument('--passwd', type=str, help='The database password')
+    opts = parser.parse_args()
+    logger.debug('Options=%s' % str(opts))
+
     Events.query_editor_opened.connect(info_of_query_editor)
     Events.table_list_rendered.connect(info_of_table_list)
     Events.table_values_rendered.connect(info_of_session)
     Events.table_desc_rendered.connect(info_of_table_desc)
     Events.keybind_changed.connect(keybind_information_in_footer)
-    view = MystiqueView(config.load_config())
+    view = MystiqueView(config.load_config(opts=opts))
     urwid.MainLoop(view, palette).run()
 
 
