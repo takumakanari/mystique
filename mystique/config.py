@@ -1,40 +1,51 @@
 # -*- encoding:utf8 -*-
 from __future__ import absolute_import
 import os
-import json
+import yaml
+
 from mystique import env
 from mystique.log import logger
 
 
-DEFAULT_CONFIG_NAME = 'mystique.config'
+DEFAULT_CONFIG_NAMES = ('mystique.yaml', 'mystique.yml',)
 CONFIG_LOAD_DIR = ('.', '/etc/mystique')
 
 
-def load_config(opts=None):
-    path = env.MYSTIQUE_ENV_CONFIG_FILE
+class ConfigError(Exception):
+    pass
 
-    if not path:
-        for d in CONFIG_LOAD_DIR:
-            path = os.path.join(d, DEFAULT_CONFIG_NAME)
+
+def _estimate_config_path():
+    for d in CONFIG_LOAD_DIR:
+        for n in DEFAULT_CONFIG_NAMES:
+            path = os.path.join(d, n)
             if os.path.exists(path):
-                break
+                return path
+    return None
+
+
+def load_config(opts):
+    path = opts.config or env.MYSTIQUE_ENV_CONFIG_FILE \
+        or _estimate_config_path()
     if not path:
-        raise Exception('Can not load mystique.config in %s' % str(CONFIG_LOAD_DIR))
-    logger.info('config load from %s' % path)
+        raise ConfigError('Can not find configuration from %s in %s' % \
+            ('|'.join(DEFAULT_CONFIG_NAMES), '|'.join(CONFIG_LOAD_DIR)))
+    logger.info('load config: path=%s' % path)
 
-    config = json.load(open(path))
+    config = yaml.load(open(path))
 
-    if opts:
-        if opts.db:
-            config['database']['db'] = opts.db
-        if opts.host:
-            config['database']['host'] = opts.host
-        if opts.port:
-            config['database']['port'] = opts.port
-        if opts.user:
-            config['database']['user'] = opts.user
-        if opts.passwd:
-            config['database']['passwd'] = opts.passwd
+    # TODO validate config schema
+    aliases = config and config.keys()
+    if not aliases:
+        raise ConfigError('Configuration is empty!')
+    elif not opts.name and len(aliases) > 1:
+        raise ConfigError('Specify one name from %s for connection alias' % '|'.join(aliases))
+    elif opts.name and opts.name not in aliases:
+        raise ConfigError('Name "%s" is not found in %s' % (opts.name, path))
+
+    config = config[aliases[0]] if len(aliases) == 1 else config[opts.name]
+
+    if opts.db:
+        config['db'] = opts.db
 
     return config
-

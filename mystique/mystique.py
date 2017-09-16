@@ -92,7 +92,7 @@ class MystiqueView(urwid.Frame):
 
     def __init__(self, conf):
         self._config = conf
-        self._database = Database(**conf['database'])
+        self._database = Database(**conf)
         self._table_list = self._database.show_tables()
 
         self.information_text1 = txt(self._database.connection_string)
@@ -430,12 +430,10 @@ def main():
     logger.debug('Bootup mystique...')
 
     import argparse
-    parser = argparse.ArgumentParser(description='Options for mystique')
-    parser.add_argument('--db', type=str, help='The database name')
-    parser.add_argument('--host', type=str, help='The database host')
-    parser.add_argument('--port', type=int, help='The database port')
-    parser.add_argument('--user', type=str, help='The database user name')
-    parser.add_argument('--passwd', type=str, help='The database password')
+    parser = argparse.ArgumentParser(description='%s v%s' % (mystique.__mystique__, mystique.__version__))
+    parser.add_argument('-d', '--db', type=str, help='the database name')
+    parser.add_argument('-c', '--config', type=str, help='a path to config file')
+    parser.add_argument('-n', '--name', type=str, help='the name of connection alias')
     opts = parser.parse_args()
     logger.debug('Options=%s' % str(opts))
 
@@ -444,10 +442,9 @@ def main():
     Events.table_values_rendered.connect(info_of_session)
     Events.table_desc_rendered.connect(info_of_table_desc)
     Events.keybind_changed.connect(keybind_information_in_footer)
-    view = MystiqueView(config.load_config(opts=opts))
+    view = MystiqueView(config.load_config(opts))
     urwid.MainLoop(view, palette).run()
 
 
 if __name__ == '__main__':
     main()
-

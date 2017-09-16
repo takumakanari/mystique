@@ -5,7 +5,7 @@ setup(
     name = mystique.__mystique__,
     version = mystique.__version__,
     packages = find_packages(
-        '.', 
+        '.',
         exclude = [
             '*.tests', '*.tests.*', 'tests.*', 'tests',
         ]
@@ -33,7 +33,8 @@ setup(
         'Cython',
         'MySQL-python',
         'urwid',
-        'blinker'
+        'blinker',
+        'pyyaml'
     ],
     license = 'BSD',
     keywords = 'mysql terminal gui utilities mystique database db',
@@ -44,4 +45,3 @@ setup(
     mystique=mystique.mystique:main
     """
 )
-
