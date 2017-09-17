@@ -101,7 +101,8 @@ class MystiqueView(urwid.Frame):
         self.listbox = urwid.ListBox(urwid.SimpleListWalker([]))
         self.query_editor = None
         self.table_filter = TableFilter(word_list=self._table_list,
-                                       autocompleted=self._do_table_filter)
+                                        autocompleted=self._do_table_filter,
+                                        match_partical=True)
         self._keypress_handler = self.keypress_default
         self._table_session = None
         self._current_focus_on_tablelist = 0

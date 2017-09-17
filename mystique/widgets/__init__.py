@@ -1,7 +1,10 @@
 # -*- encoding:utf8 -*-
 from __future__ import absolute_import
+
 import urwid
+
 from mystique.log import logger
+from mystique import util
 
 
 def txt(v, weight=0, align='left'):
@@ -78,13 +81,10 @@ class ErrorMessage(urwid.Text):
 class _AutoComplete(urwid.Edit):
 
     def __init__(self, *args, **kwargs):
-        self._word_list = kwargs.get('word_list') or []
+        self._word_list = util.get_once(kwargs, 'word_list', default=[])
         self._current_list = self._word_list
-        self._autocompleted = kwargs.get('autocompleted')
-        if 'word_list' in kwargs:
-            del kwargs['word_list']
-        if 'autocompleted' in kwargs:
-            del kwargs['autocompleted']
+        self._autocompleted = util.get_once(kwargs, 'autocompleted')
+        self._match_partical = util.get_once(kwargs, 'match_partical', default=False)
         super(_AutoComplete, self).__init__(*args, **kwargs)
         self._last_txt = self.get_edit_text()
         self._is_active = False
@@ -128,8 +128,11 @@ class _AutoComplete(urwid.Edit):
         return kp
 
     def do_filter(self, val):
-        return filter(lambda x:x.lower().startswith(val.lower()),
-                      self.word_list)
+        if self._match_partical:
+            matcher = lambda x:val.lower() in x.lower()
+        else:
+            matcher = lambda x:x.lower().startswith(val.lower())
+        return filter(matcher, self.word_list)
 
 
 class TableFilter(urwid.LineBox):
@@ -143,4 +146,3 @@ class TableColumn(urwid.Columns):
 
     def __init__(self, widget_list):
         super(TableColumn, self).__init__(widget_list, dividechars=2)
-
